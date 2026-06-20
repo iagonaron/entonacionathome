@@ -2838,8 +2838,7 @@ function runAttemptMusic(musicStart){
   });
   // ---- piano de AYUDA: 1ª nota de cada 2 compases, solo si la frase anterior fue mal ----
   // identificar la 1ª nota (no silencio) de cada compás
-  ATT.helpActive=false;       // se activa dinámicamente si una frase va mal
-  ATT.helpUntilPhrase=-1;     // ayudar mientras phraseIdx <= este valor
+  ATT.helpActive=false;       // se activa si una frase va floja; entonces dura hasta el final
   for(let b=0;b<24;b+=2){      // cada 2 compases
     // primera nota del compás b
     const n=ATT.notes.find(x=> x.t0>=barStartSec[b]-0.001 && x.t0<barStartSec[b]+nPulses*pulseSec);
@@ -2848,7 +2847,7 @@ function runAttemptMusic(musicStart){
     const whenMs=(musicStart-ctx.currentTime + n.t0)*1000;
     const id=setTimeout(()=>{
       if(!ATT.running) return;
-      if(!ATT.helpActive || phraseIdx>ATT.helpUntilPhrase) return; // solo si ayuda activa para esta frase
+      if(!ATT.helpActive) return; // una vez activada, ayuda hasta el final del ejercicio
       // tocar la nota al piano, volumen destacado
       ensureSoundfont().then(()=>{ if(EDIT.sf){ try{ EDIT.sf.play(n.midi,0,{duration:Math.min(1.0,pulseSec), gain:3.0}); }catch(e){} } });
       // onda expansiva en la cabeza
@@ -2909,8 +2908,7 @@ function analyzeAttemptFrame(){
       // si fue floja (≥35% mal) pero sin cortar -> activar ayuda de piano en la frase siguiente
       if(bad >= notesPh.length*0.35){
         ATT.helpActive=true;
-        ATT.helpUntilPhrase=Math.max(ATT.helpUntilPhrase, ph+1);
-        document.getElementById('attemptStatus').textContent='El piano te dará algunas notas de apoyo en la siguiente frase.';
+        document.getElementById('attemptStatus').textContent='El piano te dará algunas notas de apoyo para ayudarte.';
       }
     }
   }
