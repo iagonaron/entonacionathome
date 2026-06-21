@@ -251,8 +251,8 @@
   /* tarjetas de nivel (estética del portal LMEAV) */
   .lvl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
   .lvl{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:14px;padding:22px 24px;cursor:pointer;border:1px solid;transition:background .15s,border-color .15s,transform .1s;font-family:inherit}
-  .lvl .lvl-nm{font-weight:800;font-size:20px;letter-spacing:.01em;white-space:nowrap}
-  .lvl .lvl-cur{font-size:13px;font-weight:600;opacity:.85;letter-spacing:.02em;white-space:nowrap;text-align:right}
+  .lvl .lvl-nm{font-weight:800;font-size:18px;letter-spacing:.01em;white-space:nowrap}
+  .lvl .lvl-cur{font-size:12.5px;font-weight:600;opacity:.85;letter-spacing:.02em;white-space:nowrap;text-align:right}
   .lvl:active{transform:scale(.98)}
   .lvl-easy{border-color:var(--rit);background:var(--rit-soft);color:var(--rit)}
   .lvl-easy:hover:not(.locked){background:var(--rit);color:#062b1d;border-color:var(--rit)}
@@ -431,16 +431,16 @@
     <div class="hint">Bienvenido. Elige un nivel para empezar a entonar.</div>
     <div class="lvl-grid">
       <button class="lvl lvl-easy locked" data-lvl="facil">
-        <span class="lvl-nm">1º CICLO</span>
-        <span class="lvl-cur">1º–2º GE</span>
+        <span class="lvl-nm">PRIMER CICLO</span>
+        <span class="lvl-cur">1ºGE · 2ºGE</span>
       </button>
       <button class="lvl lvl-med" data-lvl="medio">
-        <span class="lvl-nm">2º CICLO</span>
-        <span class="lvl-cur">3º–4º GE</span>
+        <span class="lvl-nm">SEGUNDO CICLO</span>
+        <span class="lvl-cur">3ºGE · 4ºGE</span>
       </button>
       <button class="lvl lvl-hard locked" data-lvl="dificil">
-        <span class="lvl-nm">3º CICLO</span>
-        <span class="lvl-cur">1º–2º GP</span>
+        <span class="lvl-nm">TERCER CICLO</span>
+        <span class="lvl-cur">1ºGP · 2ºGP</span>
       </button>
     </div>
     <div class="lvl-note">El nivel es orientativo y relativo. Siéntete libre de cambiar a un nivel en el que te resulte útil practicar.<br>Esto es un trabajo complementario al que realizas en clase con tu profesor o profesora.</div>
