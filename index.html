@@ -49,6 +49,11 @@
 
   /* nombre app */
   .appname-top{text-align:center;margin-top:2px}
+  .tempo-edit{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .tempo-mini{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:14px;cursor:pointer;display:inline-grid;place-items:center;line-height:1}
+  .tempo-mini:hover{border-color:var(--accent,#2a4ba8)}
+  .tempo-input{width:52px;text-align:center;font-weight:800;font-size:13px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:3px 4px}
+  .tempo-unit{font-size:11.5px;color:var(--muted)}
   .appname-top h2{font-size:38px;font-weight:900;letter-spacing:-.01em;line-height:1;margin:0}
   .appname-top .pre{color:var(--ink);font-weight:900}
   .appname-top .post{color:var(--ink);font-weight:300;opacity:.82}
@@ -263,6 +268,26 @@
   .lvl.locked{border-color:var(--line)!important;background:rgba(233,237,255,.03)!important;color:var(--muted2)!important;cursor:not-allowed;opacity:.7}
   .lvl.locked .lvl-nm{color:var(--muted2)}
   .lvl-note{text-align:center;color:var(--muted);font-size:12.5px;margin-top:18px;line-height:1.5;max-width:680px;margin-left:auto;margin-right:auto}
+  /* afinador de diagnóstico */
+  .tuner-open{font-size:12.5px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;margin-right:8px}
+  .tuner-open:hover{color:var(--accent,#2a4ba8);border-color:var(--accent,#2a4ba8)}
+  .tuner-overlay{position:fixed;inset:0;display:none;place-items:center;background:rgba(8,12,26,.82);z-index:90}
+  .tuner-overlay.on{display:grid}
+  .tuner-card{background:#fff;color:#1a2238;border-radius:18px;padding:26px 30px;width:min(440px,92vw);text-align:center;position:relative;box-shadow:0 12px 50px rgba(0,0,0,.5)}
+  .tuner-card h3{margin:0 0 8px;font-size:18px}
+  .tuner-help{font-size:12.5px;color:#55617a;line-height:1.5;margin:0 0 16px}
+  .tuner-close{position:absolute;top:12px;right:14px;background:transparent;border:none;font-size:18px;cursor:pointer;color:#90a}
+  .tuner-close{color:#8a93a6}
+  .tuner-note{font-size:40px;font-weight:800;line-height:1.1;margin:6px 0;color:#2a4ba8;min-height:48px}
+  .tuner-bar{position:relative;height:14px;background:linear-gradient(90deg,#f0c0c0,#dfeede 50%,#f0c0c0);border-radius:999px;margin:14px 0 6px;overflow:hidden}
+  .tuner-center{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#16a34a;transform:translateX(-1px)}
+  .tuner-needle{position:absolute;top:-3px;width:5px;height:20px;background:#1a2238;border-radius:3px;left:50%;transform:translateX(-2.5px);transition:left .07s linear}
+  .tuner-cents{font-size:13px;font-weight:700;color:#55617a}
+  .tuner-freq{font-size:11.5px;color:#90a0b8;margin-top:4px}
+  .tuner-status{font-size:12.5px;color:#55617a;margin:14px 0 12px;min-height:18px}
+  .tuner-mic-btn{font-size:14px;font-weight:700;background:#22c98a;color:#062b1d;border:none;border-radius:999px;padding:11px 22px;cursor:pointer}
+  .tuner-mic-btn:hover{filter:brightness(1.06)}
+  .tuner-mic-btn.listening{background:#e0e6f0;color:#1a2238}
   .lvl-soon{text-align:center;color:var(--muted2);font-size:12.5px;margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:14px 18px;background:rgba(233,237,255,.03)}
   @media (max-width:760px){.lvl-grid{grid-template-columns:1fr}}
 
@@ -302,6 +327,15 @@
   .ph-tab.on{background:var(--accent,#2a4ba8);color:#fff;border-color:var(--accent,#2a4ba8)}
   .ph-tab.locked{opacity:.45;cursor:not-allowed}
   .ph-spacer{flex:1}
+  .mini-tuner{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;margin-right:8px}
+  #miniTunerStudy{margin-left:auto}
+  #miniTunerAtt{margin-left:6px}
+  .mini-tuner-ico{font-size:12px;opacity:.7}
+  .mini-tuner-note{font-weight:800;color:var(--ink);min-width:34px;text-align:center}
+  .mini-tuner-cents{font-size:11px;font-weight:700;color:var(--muted);min-width:46px;text-align:left}
+  .mini-tuner.on-green .mini-tuner-note{color:#16a34a}
+  .mini-tuner.on-amber .mini-tuner-note{color:#f5a623}
+  .mini-tuner.on-red .mini-tuner-note{color:#dc2626}
   .ph-exit{font-size:12.5px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
   .ph-exit:hover{color:var(--ink);border-color:var(--muted)}
   .phase{display:none}
@@ -345,10 +379,10 @@
   .student-sheet .vf-notehead.hint-fixed{cursor:pointer}
   /* nota que se está cantando ahora (acompañamiento) */
   .student-sheet .vf-notehead.now-singing path{fill:#2a6cf0!important;stroke:#2a6cf0!important}
-  .student-sheet{background:#fff;border-radius:14px;padding:6px 22px 4px 8px;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+  .student-sheet{background:#fff;border-radius:14px;padding:6px 22px 22px 8px;box-shadow:0 1px 3px rgba(0,0,0,.18);overflow:visible}
   /* compacto: solapar verticalmente los sistemas (el SVG tiene aire arriba/abajo) */
   .student-sheet .stu-line{margin-bottom:-22px}
-  .student-sheet .stu-line:last-child{margin-bottom:0}
+  .student-sheet .stu-line:last-child{margin-bottom:0;padding-bottom:24px}
   .student-sheet .phrase-row{height:12px;margin:0 0 -12px 2px;position:relative;z-index:3}
   .student-sheet .phrase-tag{font-size:11px;font-weight:800;padding:1px 7px;min-width:0;border-radius:6px;position:relative;top:30px;left:2px;line-height:1.2}
   .student-sheet .stu-wrap{position:relative}
@@ -366,8 +400,18 @@
   /* ===== fase intento ===== */
   .attempt-head{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:10px}
   .attempt-status{font-size:14px;color:var(--ink);font-weight:600;margin-bottom:10px}
-  .attempt-tools{display:flex;align-items:center;gap:12px}
-  .attempt-start{font-weight:700}
+  .attempt-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .att-help-btn{font-size:12px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
+  .att-help-btn:hover{color:var(--accent,#2a4ba8);border-color:var(--accent,#2a4ba8)}
+  .att-help-info{margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--ink);line-height:1.5;max-width:680px}
+  .att-help-info p{margin:6px 0}
+  .att-help-info ul{margin:6px 0 6px 18px;padding:0}
+  .att-help-info li{margin:3px 0}
+  .attempt-start{font-weight:800;font-size:15px;background:var(--green,#22c98a);color:#062b1d;border:none;border-radius:999px;padding:13px 26px;cursor:pointer;box-shadow:0 2px 10px rgba(34,201,138,.35);transition:filter .12s,transform .05s}
+  .attempt-start:hover{filter:brightness(1.07)}
+  .attempt-start:active{transform:scale(.97)}
+  .attempt-start:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  .att-speed-sel{margin-left:4px}
   .attempt-speed{font-size:12.5px;color:var(--muted)}
   .signal-warn{font-size:13px;color:var(--muted);margin-top:8px;min-height:18px}
   .signal-warn.mic{color:#e0556b;font-weight:600}
@@ -385,6 +429,9 @@
   @keyframes helpPulse{0%{filter:drop-shadow(0 0 0 rgba(35,85,206,.9))}50%{filter:drop-shadow(0 0 9px rgba(35,85,206,.95))}100%{filter:drop-shadow(0 0 0 rgba(35,85,206,0))}}
   .student-sheet .vf-notehead.help-pulse path{fill:#2355ce!important;stroke:#2355ce!important}
   .student-sheet .vf-notehead.help-pulse{animation:helpPulse .7s ease-out;transform-box:fill-box;transform-origin:center}
+  /* aura anticipada: avisa que esta nota será un punto de apoyo del piano (sigue negra, late suave) */
+  @keyframes helpAura{0%{filter:drop-shadow(0 0 1px rgba(35,85,206,.5))}50%{filter:drop-shadow(0 0 6px rgba(35,85,206,.85))}100%{filter:drop-shadow(0 0 1px rgba(35,85,206,.5))}}
+  .student-sheet .vf-notehead.help-aura{animation:helpAura 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
   /* overlay resultado: panel flotante arriba, NO tapa la partitura */
   .result-overlay{position:fixed;top:0;left:0;right:0;display:none;justify-content:center;z-index:70;pointer-events:none;padding-top:14px}
   .result-overlay.on{display:flex}
@@ -395,6 +442,12 @@
   .result-overlay.bad .result-card{border-color:#dc2626}
   .result-score{font-size:38px;font-weight:800;line-height:1}
   .result-msg{font-size:15px;font-weight:600;color:#1a2238;margin:8px 0 14px}
+  .result-help{font-size:12.5px;font-weight:700;margin:-6px 0 12px;padding:3px 10px;border-radius:999px;display:inline-block}
+  .result-help.h0{background:#dcfce7;color:#16a34a}
+  .result-help.h1{background:#e8f5e9;color:#2e9e4f}
+  .result-help.h2{background:#fff4d6;color:#b8860b}
+  .result-help.h3{background:#ffe9d6;color:#c2641a}
+  .result-help.h4{background:#ffe0e0;color:#c0392b}
   .result-overlay.good .result-score{color:#16a34a}
   .result-overlay.mid .result-score{color:#f5a623}
   .result-overlay.low2 .result-score{color:#f08a24}
@@ -446,7 +499,27 @@
     <div class="lvl-note">El nivel es orientativo y relativo. Siéntete libre de cambiar a un nivel en el que te resulte útil practicar.<br>Esto es un trabajo complementario al que realizas en clase con tu profesor o profesora.</div>
     <div class="lvl-soon">Las lecciones para el alumno están en construcción. Por ahora, entra a edición para crearlas.</div>
     <div class="edit-foot">
+      <button id="tunerBtn" class="tuner-open">🎤 Afinador · comprobar mi micrófono</button>
       <button id="toEditBtn">✎ Edición · insertar lecciones</button>
+    </div>
+  </div>
+
+  <!-- ===================== AFINADOR DE DIAGNÓSTICO ===================== -->
+  <div id="tunerOverlay" class="tuner-overlay">
+    <div class="tuner-card">
+      <button class="tuner-close" id="tunerClose">✕</button>
+      <h3>Afinador · diagnóstico de micrófono</h3>
+      <p class="tuner-help">Canta una nota sostenida (por ejemplo un <b>Si♭</b>) y mira qué detecta el programa. Si cantas afinado y aquí ves la nota correcta cerca de 0 cents, todo va bien.</p>
+      <div class="tuner-readout">
+        <div class="tuner-note" id="tunerNote">—</div>
+        <div class="tuner-cents-wrap">
+          <div class="tuner-bar"><div class="tuner-needle" id="tunerNeedle"></div><div class="tuner-center"></div></div>
+          <div class="tuner-cents" id="tunerCents">sin señal</div>
+        </div>
+        <div class="tuner-freq" id="tunerFreq"></div>
+      </div>
+      <div class="tuner-status" id="tunerStatus">Pulsa «Activar micrófono» y empieza a cantar.</div>
+      <button class="tuner-mic-btn" id="tunerMic">Activar micrófono</button>
     </div>
   </div>
 
@@ -472,6 +545,7 @@
           <button class="st-tool" id="stTonic" title="Escuchar la tónica">♪ Tónica</button>
           <button class="st-tool" id="stScale" title="Escuchar la escala (sube y baja)">♪ Escala</button>
           <button class="st-tool st-hint" id="stHint" title="3 pistas: pulsa y elige una nota; quedará marcada para oírla cuando quieras">🩷 Pistas <span id="hintCount">(3)</span></button>
+          <button class="st-tool" id="stTunerBtn" title="Afinador">🎤 Afinador</button>
           <span class="st-sep"></span>
           <span class="st-accomp-wrap">
             <button class="st-tool" id="stAccomp" disabled>▶ Practicar con acompañamiento</button>
@@ -483,6 +557,11 @@
             <button class="st-speed" id="stFaster">Más rápido</button>
           </span>
           <span class="speed-hint" id="speedHint">Elige una velocidad con la que te sientas a gusto. No afecta a tu puntuación.</span>
+          <span class="mini-tuner" id="miniTunerStudy" title="Afinador: nota que estás dando">
+            <span class="mini-tuner-ico">🎤</span>
+            <span class="mini-tuner-note" id="miniTunerStudyNote">—</span>
+            <span class="mini-tuner-cents" id="miniTunerStudyCents"></span>
+          </span>
         </div>
       </div>
       <div id="studySheet" class="student-sheet"></div>
@@ -493,10 +572,31 @@
       <div class="attempt-head">
         <div class="attempt-status" id="attemptStatus">Pulsa «Empezar» y canta con el acompañamiento.</div>
         <div class="attempt-tools">
-          <button class="st-tool attempt-start" id="atStart">▶ Empezar intento</button>
-          <span class="attempt-speed" id="atSpeedLabel">Velocidad: normal</span>
+          <button class="attempt-start" id="atStart">▶ Empezar intento</button>
+          <span class="st-tempo att-speed-sel">
+            <button class="st-speed" id="atSlower">Más lento</button>
+            <button class="st-speed on" id="atNormal">Normal</button>
+            <button class="st-speed" id="atFaster">Más rápido</button>
+          </span>
+          <button class="att-help-btn" id="atHelpBtn" title="Cómo funciona la ayuda">ⓘ ¿Cómo funciona?</button>
+          <button class="att-help-btn" id="atTunerBtn" title="Afinador">🎤 Afinador</button>
+          <span class="mini-tuner" id="miniTunerAtt" title="Nota que estás dando">
+            <span class="mini-tuner-ico">🎤</span>
+            <span class="mini-tuner-note" id="miniTunerAttNote">—</span>
+          </span>
         </div>
         <div class="signal-warn" id="atSignal"></div>
+        <div class="att-help-info" id="atHelpInfo" style="display:none">
+          <p><b>Cómo te ayuda el piano</b></p>
+          <p>Cantarás la melodía entera con el acompañamiento. La nota que toca cantar en cada momento se va marcando en <b style="color:#2355ce">azul</b>.</p>
+          <p>El piano te da algunas notas de apoyo (suenan destacadas y la nota parpadea). La cantidad de ayuda <b>se adapta línea a línea</b>:</p>
+          <ul>
+            <li>Si una línea te sale muy bien, en la siguiente el piano te ayuda menos (o nada).</li>
+            <li>Si te cuesta, te da más notas de apoyo: la primera de cada dos compases, o de cada compás.</li>
+          </ul>
+          <p>La primera nota del ejercicio siempre te la regala para arrancar, y esa no cuenta. Al final verás <b>cuánta ayuda necesitaste</b>: es solo informativo y <b>no baja tu puntuación</b>. La nota depende solo de cómo afinaste.</p>
+          <p>Truco: fíjate bien en las notas azules. Si cantas más despacio que la marca, el programa creerá que te equivocas de nota. Si te pasa, baja la velocidad.</p>
+        </div>
       </div>
       <div id="attemptSheet" class="student-sheet"></div>
     </div>
@@ -875,7 +975,9 @@ function generateLesson(seed){
   }
 
   const dynamics = [null,null,null];
-  return { key:k, ts, pulses, labels, bars, phrases:['a','b','a\u2019'], dynamics, seed };
+  const den=parseInt(ts.split('/')[1],10);
+  const tempo = (den===8)?40:50; // tempo base estándar (editable por el profesor)
+  return { key:k, ts, pulses, labels, bars, phrases:['a','b','a\u2019'], dynamics, seed, tempo };
 }
 
 /* ---------- Espejo a -> a' ----------
@@ -1250,10 +1352,24 @@ function renderAll(){
   container.innerHTML='';
   if(!LESSON){ container.innerHTML='<div class="empty-state">Pulsa el dado para generar una lección.</div>'; return; }
 
-  // info de la lección
+  // info de la lección (con tempo base editable por el profesor)
   const info=document.getElementById('lessonInfo');
   info.style.display='';
-  info.innerHTML='Tonalidad: <b>'+LESSON.key.name+'</b> · Compás: <b>'+LESSON.ts+'</b> · 24 compases · 3 frases';
+  const den=parseInt(LESSON.ts.split('/')[1],10);
+  if(LESSON.tempo==null) LESSON.tempo=(den===8)?40:50;
+  const pulsoNombre=(den===8)?'negra con puntillo':'negra';
+  info.innerHTML='Tonalidad: <b>'+LESSON.key.name+'</b> · Compás: <b>'+LESSON.ts+'</b> · 24 compases · 3 frases'
+    +' · <span class="tempo-edit">Tempo base: '
+    +'<button id="tempoDown" class="tempo-mini" title="−1 bpm">−</button>'
+    +'<input id="tempoInput" class="tempo-input" type="number" min="20" max="200" value="'+LESSON.tempo+'">'
+    +'<button id="tempoUp" class="tempo-mini" title="+1 bpm">+</button>'
+    +' <span class="tempo-unit">bpm ('+pulsoNombre+')</span></span>';
+  // wiring del tempo
+  const ti=document.getElementById('tempoInput');
+  const clampTempo=(v)=>Math.max(20,Math.min(200, v||((den===8)?40:50)));
+  ti.onchange=()=>{ LESSON.tempo=clampTempo(parseInt(ti.value,10)); ti.value=LESSON.tempo; };
+  document.getElementById('tempoDown').onclick=()=>{ LESSON.tempo=clampTempo(LESSON.tempo-1); ti.value=LESSON.tempo; };
+  document.getElementById('tempoUp').onclick=()=>{ LESSON.tempo=clampTempo(LESSON.tempo+1); ti.value=LESSON.tempo; };
 
   const eff = resolvedHarmony(LESSON);
   const sysData=[]; // para recolocar en resize
@@ -1697,6 +1813,20 @@ function setMode(m){
   applyNoteInteraction();
 }
 
+// recoloca el cursor de ALTURAS en la 1ª nota del pulso actualmente en EDIT.ritSel
+// (se usa tras escribir ritmo directamente desde el modo alturas)
+function resyncAltCursorToRitSel(){
+  if(!EDIT.ritSel) return;
+  const pl=buildPulseList();
+  const ps=pl.find(o=>o.bar===EDIT.ritSel.bar && o.pulse===EDIT.ritSel.pulse);
+  if(!ps) return;
+  for(const ni of ps.noteIdxs){
+    const pos=EDIT.seq.findIndex(s=>s.bar===ps.bar && s.idx===ni);
+    if(pos>=0){ EDIT.cursor=pos; EDIT.sel={bar:ps.bar, idx:ni}; break; }
+  }
+  refreshHighlight();
+}
+
 /* =========================================================================
    MOTOR DE ACOMPAÑAMIENTO (Web Audio): pad de cuerdas + percusión sintetizada
    ========================================================================= */
@@ -2033,7 +2163,8 @@ function playLesson(){
     const ts=LESSON.ts; const den=parseInt(ts.split('/')[1],10);
     const nPulses=LESSON.pulses;
     // tempo: 6/8 -> 45 bpm (pulso = negra con puntillo); 2/4 y 3/4 -> 55 bpm (pulso = negra)
-    const bpm = (den===8)? 40 : 50;
+    // tempo base de la lección (editable por el profesor); fallback al estándar
+    const bpm = LESSON.tempo || ((den===8)? 40 : 50);
     const pulseSec = 60/bpm;
     const beatMs = pulseSec*1000;
     const DURpulses={'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
@@ -2065,15 +2196,18 @@ function playLesson(){
       });
 
       // --- melodía (soundfont) ---
+      // negrasPorPulso: en 6/8 el pulso es negra con puntillo (1.5 negras); en 2/4·3/4 es 1 negra
+      const negrasPorPulso = (den===8)? 1.5 : 1;
       let acc=0;
       bar.notes.forEach(n=>{
-        const beats=DURpulses[n.d.replace('r','')]||0;
+        const beatsNegras=DURpulses[n.d.replace('r','')]||0;
+        const durPulsos = beatsNegras/negrasPorPulso; // duración en PULSOS reales del compás
         const tN = (barStartSec + acc*pulseSec);
         if(!n.rest && n.midi!=null){
-          const id=setTimeout(()=>{ if(EDIT.sf && EDIT.playing){ try{ EDIT.sf.play(n.midi,0,{duration:beats*pulseSec}); }catch(e){} } }, tN*1000+120);
+          const id=setTimeout(()=>{ if(EDIT.sf && EDIT.playing){ try{ EDIT.sf.play(n.midi,0,{duration:durPulsos*pulseSec}); }catch(e){} } }, tN*1000+120);
           EDIT._playTimers.push(id);
         }
-        acc+=beats;
+        acc+=durPulsos;
       });
 
       cursorSec += nPulses*pulseSec;
@@ -2268,15 +2402,33 @@ document.addEventListener('keydown',(e)=>{
   if(isField) return;
 
   if((e.metaKey||e.ctrlKey) && (e.key==='z'||e.key==='Z')){ e.preventDefault(); doUndo(); return; }
-  // figuras largas en modo ritmo: Cmd/Ctrl+2 = blanca, Cmd/Ctrl+3 = blanca con puntillo
-  if((e.metaKey||e.ctrlKey) && EDIT.mode==='ritmo' && (e.key==='2'||e.key==='3')){
-    e.preventDefault();
-    ritApplyLong(e.key==='3' ? 'hd' : 'h');
-    return;
+
+  // --- escritura rítmica directa desde ALTURAS: aplica al pulso de la nota seleccionada, sin cambiar de modo ---
+  // (igual que en dictado: en Alturas, pulsar números/atajos rítmicos ajusta el ritmo del pulso actual)
+  function syncRitSelFromAlt(){
+    const cur=EDIT.seq[EDIT.cursor];
+    if(cur){ selectPulseOfNote(cur.bar, cur.idx); return true; }
+    return false;
   }
-  // Cmd/Ctrl+S en modo ritmo = síncopa (corchea-negra-corchea) sobre 2 pulsos
+
+  // figuras largas: Cmd/Ctrl+2 = blanca, Cmd/Ctrl+3 = blanca con puntillo (en ritmo o alturas)
+  if((e.metaKey||e.ctrlKey) && (e.key==='2'||e.key==='3')){
+    const fromAlt = (EDIT.mode==='alturas');
+    if(EDIT.mode==='ritmo' || (fromAlt && syncRitSelFromAlt())){
+      e.preventDefault();
+      ritApplyLong(e.key==='3' ? 'hd' : 'h');
+      if(fromAlt) resyncAltCursorToRitSel();
+      return;
+    }
+  }
+  // Cmd/Ctrl+S = síncopa (en ritmo o alturas)
   if((e.metaKey||e.ctrlKey) && (e.key==='s'||e.key==='S')){
-    if(EDIT.mode==='ritmo'){ e.preventDefault(); ritApplySyncopation(); return; }
+    const fromAlt = (EDIT.mode==='alturas');
+    if(EDIT.mode==='ritmo' || (fromAlt && syncRitSelFromAlt())){
+      e.preventDefault(); ritApplySyncopation();
+      if(fromAlt) resyncAltCursorToRitSel();
+      return;
+    }
   }
   if(e.code==='Space'){ e.preventDefault(); playLesson(); return; }
   if(e.key==='a'||e.key==='A'){ e.preventDefault(); setMode('alturas'); return; }
@@ -2294,6 +2446,10 @@ document.addEventListener('keydown',(e)=>{
     return;
   }
   // modo alturas
+  // números 0-9: aplicar célula rítmica al pulso de la nota seleccionada (sin ir a Ritmo)
+  if(/^[0-9]$/.test(e.key)){
+    if(syncRitSelFromAlt()){ e.preventDefault(); ritApplyByCount(parseInt(e.key,10)); resyncAltCursorToRitSel(); return; }
+  }
   if(e.key==='ArrowUp'){ e.preventDefault(); nudge(+1); }
   else if(e.key==='ArrowDown'){ e.preventDefault(); nudge(-1); }
   else if(e.key==='ArrowRight'){ e.preventDefault(); moveSel(+1); }
@@ -2464,6 +2620,125 @@ function tryPw(){
   else { pwErr.textContent='Contraseña incorrecta'; pwInput.value=''; pwInput.focus(); }
 }
 document.getElementById('toEditBtn').onclick=openPw;
+
+/* ===== MINI-AFINADOR siempre activo en la barra ===== */
+const MINITUNER={running:false, raf:null};
+async function startMiniTuner(){
+  if(MINITUNER.running) return;
+  try{ await initMic(); }catch(e){
+    const el=document.getElementById('miniTunerNote'); if(el) el.textContent='mic✗';
+    return;
+  }
+  MINITUNER.running=true;
+  miniTunerLoop();
+}
+function stopMiniTuner(){
+  MINITUNER.running=false;
+  if(MINITUNER.raf){ cancelAnimationFrame(MINITUNER.raf); MINITUNER.raf=null; }
+}
+function miniTunerLoop(){
+  if(!MINITUNER.running) return;
+  let freq=-1, rms=0;
+  try{ const r=micGetFrame(); freq=r.freq; rms=r.rms; }catch(e){}
+  let noteTxt='—', centsTxt='', colorCls='';
+  if(freq>0 && rms>=PCFG.rmsMin){
+    const info=freqToNoteInfo(freq);
+    const short = NOTE_FLATS[((info.midi%12)+12)%12] || info.name.split(' ')[0];
+    noteTxt=short+info.octave;
+    const ab=Math.abs(info.cents);
+    const sign=info.cents>0?'+':'';
+    centsTxt=sign+info.cents+'c';
+    colorCls=ab<=15?'on-green':(ab<=35?'on-amber':'on-red');
+  }
+  // estudio: nota + cents + color
+  const ws=document.getElementById('miniTunerStudy');
+  if(ws){
+    ws.classList.remove('on-green','on-amber','on-red'); if(colorCls) ws.classList.add(colorCls);
+    const nn=document.getElementById('miniTunerStudyNote'); if(nn) nn.textContent=noteTxt;
+    const cc=document.getElementById('miniTunerStudyCents'); if(cc) cc.textContent=centsTxt;
+  }
+  // intento: solo la nota (sin cents, sin color que distraiga)
+  const wa=document.getElementById('miniTunerAtt');
+  if(wa){
+    const nn=document.getElementById('miniTunerAttNote'); if(nn) nn.textContent=noteTxt;
+  }
+  MINITUNER.raf=requestAnimationFrame(miniTunerLoop);
+}
+
+/* ===== AFINADOR DE DIAGNÓSTICO ===== */
+const TUNER={running:false, raf:null};
+const NOTE_NAMES=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+const NOTE_FLATS={1:'Re♭',3:'Mi♭',6:'Sol♭',8:'La♭',10:'Si♭'};
+function freqToNoteInfo(freq){
+  // midi continuo respecto a A4=440 (midi 69)
+  const midiF=69+12*Math.log2(freq/440);
+  const midiR=Math.round(midiF);
+  const cents=Math.round((midiF-midiR)*100); // desviación respecto a la nota cromática más cercana
+  const pc=((midiR%12)+12)%12;
+  const oct=Math.floor(midiR/12)-1; // notación científica
+  let name=NOTE_NAMES[pc];
+  if(NOTE_FLATS[pc]) name=NOTE_NAMES[pc]+' / '+NOTE_FLATS[pc]; // muestra enarmónico (p.ej. La# / Si♭)
+  return {name, octave:oct, cents, midi:midiR};
+}
+function openTuner(){
+  document.getElementById('tunerOverlay').classList.add('on');
+  document.getElementById('tunerStatus').textContent='Pulsa «Activar micrófono» y empieza a cantar.';
+  document.getElementById('tunerNote').textContent='—';
+  document.getElementById('tunerCents').textContent='sin señal';
+  document.getElementById('tunerFreq').textContent='';
+  document.getElementById('tunerNeedle').style.left='50%';
+}
+function closeTuner(){
+  document.getElementById('tunerOverlay').classList.remove('on');
+  TUNER.running=false;
+  if(TUNER.raf){ cancelAnimationFrame(TUNER.raf); TUNER.raf=null; }
+}
+async function tunerStartMic(){
+  const btn=document.getElementById('tunerMic');
+  try{
+    await initMic();
+  }catch(e){
+    document.getElementById('tunerStatus').textContent='No se pudo acceder al micrófono. Revisa los permisos del navegador.';
+    return;
+  }
+  btn.textContent='Escuchando…'; btn.classList.add('listening');
+  document.getElementById('tunerStatus').textContent='Canta una nota sostenida y mantenla.';
+  TUNER.running=true;
+  tunerLoop();
+}
+function tunerLoop(){
+  if(!TUNER.running) return;
+  const {freq,rms}=micGetFrame();
+  calibrateMicGain();
+  const noteEl=document.getElementById('tunerNote');
+  const centsEl=document.getElementById('tunerCents');
+  const freqEl=document.getElementById('tunerFreq');
+  const needle=document.getElementById('tunerNeedle');
+  if(freq>0 && rms>=PCFG.rmsMin){
+    const info=freqToNoteInfo(freq);
+    noteEl.textContent=info.name+' '+info.octave;
+    const sign=info.cents>0?'+':'';
+    centsEl.textContent=sign+info.cents+' cents '+(info.cents>0?'(agudo)':info.cents<0?'(grave)':'(justo)');
+    freqEl.textContent=freq.toFixed(1)+' Hz';
+    // aguja: -50..+50 cents -> 0..100%
+    const pos=Math.max(-50,Math.min(50,info.cents));
+    needle.style.left=(50+pos)+'%';
+    // color de la aguja según desviación
+    const ab=Math.abs(info.cents);
+    needle.style.background = ab<=15?'#16a34a':(ab<=35?'#f5a623':'#dc2626');
+  } else {
+    noteEl.textContent='—';
+    centsEl.textContent='sin señal';
+    freqEl.textContent='';
+    needle.style.left='50%'; needle.style.background='#1a2238';
+  }
+  TUNER.raf=requestAnimationFrame(tunerLoop);
+}
+document.getElementById('tunerBtn').onclick=openTuner;
+document.getElementById('tunerClose').onclick=closeTuner;
+document.getElementById('tunerMic').onclick=tunerStartMic;
+const stTb=document.getElementById('stTunerBtn'); if(stTb) stTb.onclick=openTuner;
+const atTb=document.getElementById('atTunerBtn'); if(atTb) atTb.onclick=openTuner;
 document.getElementById('toStudentBtn').onclick=()=>showView('student');
 document.querySelectorAll('.lvl[data-lvl]').forEach(btn=>{
   btn.onclick=()=>{
@@ -2506,13 +2781,14 @@ async function startStudentSession(level){
 
 function openPractice(){
   showView('practice');
-  // tempo base según compás
+  // tempo base: el que fijó el profesor en la lección; si no, estándar por compás
   const den=parseInt((STU.lesson.ts||'2/4').split('/')[1],10);
-  STU.baseTempo = (den===8)?40:50;
+  STU.baseTempo = STU.lesson.tempo || ((den===8)?40:50);
   STU.tempo = STU.baseTempo;
   // estado inicial de fases
   setPhase('study');
   document.getElementById('phAttempt').classList.add('locked');
+  startMiniTuner();
   renderStudentSheet();
   startStudyPhase(false);
 }
@@ -2674,9 +2950,9 @@ function playChime(){
   }catch(e){}
 }
 function setSpeedButtons(which){
-  ['stSlower','stNormal','stFaster'].forEach(id=>{
-    document.getElementById(id).classList.toggle('on',
-      (id==='stSlower'&&which==='slow')||(id==='stNormal'&&which==='normal')||(id==='stFaster'&&which==='fast'));
+  [['stSlower','slow'],['stNormal','normal'],['stFaster','fast'],
+   ['atSlower','slow'],['atNormal','normal'],['atFaster','fast']].forEach(([id,val])=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('on', which===val);
   });
 }
 function updateStudyTimer(){
@@ -2701,9 +2977,8 @@ function goToAttempt(){
   document.getElementById('studyCountdown').classList.remove('on');
   document.getElementById('phAttempt').classList.remove('locked');
   setPhase('attempt');
-  // velocidad heredada de estudio
-  const spName = STU.speed==='slow'?'más lento':(STU.speed==='fast'?'más rápido':'normal');
-  document.getElementById('atSpeedLabel').textContent='Velocidad: '+spName;
+  // velocidad heredada de estudio: sincronizar el selector del intento
+  setSpeedButtons(STU.speed||'normal');
   document.getElementById('attemptStatus').textContent='Pulsa «Empezar» y canta con el acompañamiento.';
   document.getElementById('atSignal').textContent=''; document.getElementById('atSignal').className='signal-warn';
   document.getElementById('atStart').disabled=false;
@@ -2715,7 +2990,7 @@ function goToAttempt(){
 /* =========================================================================
    MOTOR DE DETECCIÓN DE TONO (criterio y colores reutilizados de la app de Iago)
    ========================================================================= */
-const PCFG = { rmsMin:0.024, micGain:8.0, centsPerfect:60, centsNear:90, fftSize:2048 };
+const PCFG = { rmsMin:0.024, micGain:8.0, centsPerfect:50, centsNear:100, centsPerfectLow:50, centsNearLow:100, fftSize:2048 };
 let MIC = { ctx:null, analyser:null, stream:null, buf:null, gainNode:null, rawAnalyser:null, rawBuf:null, autoGain:8.0, ready:false };
 
 async function initMic(){
@@ -2822,14 +3097,17 @@ function buildAttemptTimeline(){
   const L=STU.lesson; const den=parseInt(L.ts.split('/')[1],10);
   const pulseSec=60/STU.tempo;
   const DURpulses={'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
+  const negrasPorPulso = (den===8)? 1.5 : 1;
   const notes=[]; let t=0; let headIdx=0;
+  ATT._barOfHead={};
   L.bars.forEach((bar,b)=>{
     const phraseIdx=Math.floor(b/8);
     bar.notes.forEach(n=>{
-      const beats=DURpulses[n.d.replace('r','')]||0;
-      const dur=beats*pulseSec;
+      const beatsNegras=DURpulses[n.d.replace('r','')]||0;
+      const dur=(beatsNegras/negrasPorPulso)*pulseSec; // duración real en segundos
       if(!n.rest && n.midi!=null){
         notes.push({ midi:n.midi, t0:t, t1:t+dur, headIdx:headIdx, phrase:phraseIdx, result:null });
+        ATT._barOfHead[headIdx]=b;
         headIdx++;
       }
       t+=dur;
@@ -2894,23 +3172,47 @@ function runAttemptMusic(musicStart){
     const onId=setTimeout(()=>{ if(!ATT.running) return; ATT._heads.forEach(h=>h.classList.remove('singing-now','help-pulse')); const h=ATT._heads[n.headIdx]; if(h) h.classList.add('singing-now'); }, (musicStart-ctx.currentTime + n.t0)*1000);
     ATT.timers.push(onId);
   });
-  // ---- piano de AYUDA: 1ª nota de cada 2 compases, solo si la frase anterior fue mal ----
-  // identificar la 1ª nota (no silencio) de cada compás
-  ATT.helpActive=false;       // se activa si una frase va floja; entonces dura hasta el final
-  for(let b=0;b<24;b+=2){      // cada 2 compases
-    // primera nota del compás b
+  // ---- piano de AYUDA adaptativa, recalibrada por SISTEMA (cada 4 compases) ----
+  // niveles: 'none' | 'sysStart' (1ª del sistema) | 'every2' (1ª de cada 2 compases) | 'every1' (1ª de cada compás)
+  // el sistema 0 empieza con 'sysStart'; cada sistema fija el nivel del siguiente según su % de aciertos
+  const SYS_STARTS=[0,4,8,12,16,20];
+  ATT.sysHelpLevel = ['sysStart',null,null,null,null,null]; // por sistema (índice 0..5)
+  ATT.helpGiven = 0;     // nº de notas de ayuda que han sonado (para valoración final)
+  ATT.sysChecked = {};   // sistemas ya evaluados para calibrar el siguiente
+  // 1ª nota (no silencio) de cada compás -> headIdx, para localizar apoyos
+  ATT._firstHeadOfBar={};
+  for(let b=0;b<24;b++){
+    const n=ATT.notes.find(x=> x.t0>=barStartSec[b]-0.001 && x.t0<barStartSec[b]+nPulses*pulseSec);
+    if(n) ATT._firstHeadOfBar[b]=n.headIdx;
+  }
+  ATT._sysStartSec=barStartSec; // inicio en seg de cada compás (para temporizar el aura)
+  for(let b=0;b<24;b++){
     const n=ATT.notes.find(x=> x.t0>=barStartSec[b]-0.001 && x.t0<barStartSec[b]+nPulses*pulseSec);
     if(!n) continue;
-    const phraseIdx=Math.floor(b/8);
+    const sysIdx=Math.floor(b/4);
+    const posInSys=b%4; // 0..3 (0 = inicio de sistema)
     const whenMs=(musicStart-ctx.currentTime + n.t0)*1000;
     const id=setTimeout(()=>{
       if(!ATT.running) return;
-      if(!ATT.helpActive) return; // una vez activada, ayuda hasta el final del ejercicio
-      // tocar la nota al piano, volumen destacado
+      const lvl=ATT.sysHelpLevel[sysIdx] || 'none';
+      let suena=false;
+      if(lvl==='every1') suena=true;
+      else if(lvl==='every2') suena=(posInSys===0 || posInSys===2);
+      else if(lvl==='sysStart') suena=(posInSys===0);
+      // 'none' => nunca
+      if(!suena) return;
+      // la primerísima nota del ejercicio (compás 0) es gratis: no cuenta en la valoración
+      if(b!==0) ATT.helpGiven++;
       ensureSoundfont().then(()=>{ if(EDIT.sf){ try{ EDIT.sf.play(n.midi,0,{duration:Math.min(1.0,pulseSec), gain:3.0}); }catch(e){} } });
-      // onda expansiva en la cabeza
-      const h=ATT._heads[n.headIdx]; if(h){ h.classList.add('help-pulse'); setTimeout(()=>h.classList.remove('help-pulse'),700); }
+      const h=ATT._heads[n.headIdx]; if(h){ h.classList.remove('help-aura'); h.classList.add('help-pulse'); setTimeout(()=>h.classList.remove('help-pulse'),700); }
     }, whenMs);
+    ATT.timers.push(id);
+  }
+  // programar el AURA anticipada: al entrar en cada sistema, marcar las notas que el piano tocará ahí
+  for(let s=0;s<6;s++){
+    const firstBar=s*4;
+    const whenMs=(musicStart-ctx.currentTime + barStartSec[firstBar])*1000 - 50;
+    const id=setTimeout(()=>{ if(ATT.running) paintSystemAura(s); }, Math.max(0,whenMs));
     ATT.timers.push(id);
   }
   // arrancar el bucle de análisis de micrófono
@@ -2924,6 +3226,24 @@ function runAttemptMusic(musicStart){
   ATT.timers.push(endId);
 }
 
+// pinta el aura anticipada en las notas de apoyo del sistema s (limpia las de otros sistemas)
+function paintSystemAura(s){
+  // quitar auras anteriores
+  (ATT._heads||[]).forEach(h=>h.classList.remove('help-aura'));
+  const lvl=ATT.sysHelpLevel[s]||'none';
+  if(lvl==='none') return;
+  const bars=[s*4, s*4+1, s*4+2, s*4+3];
+  bars.forEach((b,posInSys)=>{
+    let apoyo=false;
+    if(lvl==='every1') apoyo=true;
+    else if(lvl==='every2') apoyo=(posInSys===0 || posInSys===2);
+    else if(lvl==='sysStart') apoyo=(posInSys===0);
+    if(!apoyo) return;
+    const head=ATT._heads[ATT._firstHeadOfBar[b]];
+    if(head) head.classList.add('help-aura');
+  });
+}
+
 function analyzeAttemptFrame(){
   if(!ATT.running) return;
   const now=performance.now();
@@ -2933,55 +3253,82 @@ function analyzeAttemptFrame(){
   calibrateMicGain();
   const n=ATT.notes.find(x=> tSec>=x.t0 && tSec<x.t1);
   if(n){
-    const acc = ATT._sampleAcc[n.headIdx] || (ATT._sampleAcc[n.headIdx]={green:0,amber:0,total:0,voiced:0});
+    const acc = ATT._sampleAcc[n.headIdx] || (ATT._sampleAcc[n.headIdx]={green:0,amber:0,total:0,voiced:0,freqs:[]});
+    if(!acc.freqs) acc.freqs=[];
     acc.total++;
     if(freq>0 && rms>=PCFG.rmsMin){
       acc.voiced++;
-      const {centsAbs}=evalPitchCents(freq, n.midi);
-      if(centsAbs<=PCFG.centsPerfect) acc.green++;
-      else if(centsAbs<=PCFG.centsNear) acc.amber++;
+      acc.freqs.push(freq);
+      const {centsAbs, dir}=evalPitchCents(freq, n.midi);
+      // por abajo (grave) somos más benévolos: verde ≤75c, ámbar ≤100c
+      const perfectTh = (dir==='baja') ? PCFG.centsPerfectLow : PCFG.centsPerfect;
+      const nearTh    = (dir==='baja') ? PCFG.centsNearLow    : PCFG.centsNear;
+      if(centsAbs<=perfectTh) acc.green++;
+      else if(centsAbs<=nearTh) acc.amber++;
+      // mejor momento de la nota: nos quedamos con el frame más afinado (menor desviación)
+      if(acc.bestCents==null || centsAbs<acc.bestCents){ acc.bestCents=centsAbs; acc.bestDir=dir; }
     }
   }
-  // corte por frase: al pasar el final de la última nota de una frase, evaluar
-  for(let ph=0; ph<3; ph++){
-    if(ATT._phraseChecked && ATT._phraseChecked[ph]) continue;
-    const notesPh=ATT.notes.filter(x=>x.phrase===ph);
-    if(!notesPh.length) continue;
-    const lastEnd=Math.max(...notesPh.map(x=>x.t1));
+  // ---- calibración por SISTEMA: al terminar cada sistema, fijar la ayuda del siguiente ----
+  for(let s=0; s<6; s++){
+    if(ATT.sysChecked && ATT.sysChecked[s]) continue;
+    const notesSys=ATT.notes.filter(x=> Math.floor((ATT._barOfHead[x.headIdx]||0)/4)===s );
+    if(!notesSys.length) continue;
+    const lastEnd=Math.max(...notesSys.map(x=>x.t1));
     if(tSec>=lastEnd+0.05){
-      ATT._phraseChecked=ATT._phraseChecked||{}; ATT._phraseChecked[ph]=true;
-      // evaluar provisionalmente esta frase
-      let bad=0, voiced=0;
-      notesPh.forEach(x=>{
+      ATT.sysChecked=ATT.sysChecked||{}; ATT.sysChecked[s]=true;
+      // % de aciertos del sistema según el MEJOR momento de cada nota (criterio benévolo)
+      let green=0, total=notesSys.length, voicedNotes=0;
+      notesSys.forEach(x=>{
         const acc=ATT._sampleAcc[x.headIdx];
-        if(!acc||acc.voiced<Math.max(2,acc.total*0.25)){ bad++; return; }
-        const gp=acc.green/acc.voiced, ap=acc.amber/acc.voiced; voiced++;
-        if(gp<0.5 && (gp+ap)<0.5) bad++;
+        if(!acc || acc.voiced<Math.max(2,acc.total*0.20) || acc.bestCents==null) return;
+        voicedNotes++;
+        const dir=acc.bestDir||'alta';
+        const th=(dir==='baja')?PCFG.centsPerfectLow:PCFG.centsPerfect;
+        if(acc.bestCents<=th) green++;
       });
-      if(bad > notesPh.length*0.5){
-        // más del 50% de la frase mal -> cortar
+      const pctSys = Math.round(100*green/total);
+      // si casi no hubo voz en todo el sistema, no cortamos por desafinación (puede ser micro)
+      const muyPocaVoz = voicedNotes < total*0.2;
+      // <30%: parar el ejercicio (salvo que sea claramente falta de voz/micro, que se gestiona al final)
+      if(pctSys<30 && !muyPocaVoz){
         finishAttempt(true);
         return;
       }
-      // si fue floja (≥35% mal) pero sin cortar -> activar ayuda de piano en la frase siguiente
-      if(bad >= notesPh.length*0.35){
-        ATT.helpActive=true;
-        document.getElementById('attemptStatus').textContent='El piano te dará algunas notas de apoyo para ayudarte.';
+      // fijar nivel de ayuda del SIGUIENTE sistema según el % de éste
+      if(s+1<6){
+        let lvl;
+        if(pctSys>=90) lvl='none';
+        else if(pctSys>=70) lvl='sysStart';   // 70-89: solo la 1ª del pentagrama
+        else if(pctSys>=50) lvl='every2';      // 50-69: 1ª de cada 2 compases
+        else lvl='every1';                     // 30-49: 1ª de cada compás
+        ATT.sysHelpLevel[s+1]=lvl;
+        const msg = lvl==='none' ? '¡Genial! El piano deja de darte notas de apoyo.'
+                  : lvl==='sysStart' ? 'El piano te dará la primera nota de cada línea.'
+                  : lvl==='every2' ? 'El piano te dará la primera nota de cada dos compases.'
+                  : 'El piano te dará la primera nota de cada compás para ayudarte.';
+        document.getElementById('attemptStatus').textContent=msg;
       }
     }
   }
 }
+
 
 // evalúa el resultado de cada nota a partir de las muestras acumuladas
 function resolveNoteResults(){
   ATT.notes.forEach(n=>{
     const acc=ATT._sampleAcc[n.headIdx];
     if(!acc || acc.total===0){ n.result='red'; n.voiced=false; return; }
-    n.voiced = acc.voiced >= Math.max(2, acc.total*0.25); // hubo voz suficiente
-    if(!n.voiced){ n.result='red'; return; }
-    const gp=acc.green/acc.voiced, ap=acc.amber/acc.voiced;
-    if(gp>=0.5) n.result='green';
-    else if(gp+ap>=0.5) n.result='amber';
+    // hubo voz suficiente para juzgar (si apenas se oyó, no es justo)
+    n.voiced = acc.voiced >= Math.max(2, acc.total*0.20);
+    if(!n.voiced || acc.bestCents==null){ n.result='red'; return; }
+    // criterio benévolo "del mejor momento": si EN ALGÚN instante de la nota
+    // el alumno la afinó, la damos por buena (como haría un profesor escuchando).
+    const dir=acc.bestDir||'alta';
+    const perfectTh = (dir==='baja') ? PCFG.centsPerfectLow : PCFG.centsPerfect;
+    const nearTh    = (dir==='baja') ? PCFG.centsNearLow    : PCFG.centsNear;
+    if(acc.bestCents<=perfectTh) n.result='green';
+    else if(acc.bestCents<=nearTh) n.result='amber';
     else n.result='red';
   });
 }
@@ -2992,7 +3339,7 @@ function finishAttempt(cutByPhrase){
   (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
   hideClack();
   stopAccomp();
-  ATT._heads.forEach(h=>h.classList.remove('singing-now'));
+  ATT._heads.forEach(h=>h.classList.remove('singing-now','help-aura'));
   resolveNoteResults();
   // pintar colores
   ATT.notes.forEach(n=>{
@@ -3006,10 +3353,78 @@ function finishAttempt(cutByPhrase){
   // % de verdes
   const greens=ATT.notes.filter(n=>n.result==='green').length;
   const pct=Math.round(100*greens/ATT.notes.length);
-  showAttemptResult(pct, micProblem, cutByPhrase);
+  // valoración del nivel de ayuda recibido (no afecta a la nota)
+  const helpLabel = helpUsageLabel();
+  // registro de diagnóstico (para revisar la interpretación después)
+  buildDiagnosticReport();
+  showAttemptResult(pct, micProblem, cutByPhrase, helpLabel);
 }
 
-function showAttemptResult(pct, micProblem, cutByPhrase){
+// construye un registro nota a nota: lo que tocaba vs lo que se detectó
+function buildDiagnosticReport(){
+  const NOTE_NAMES=['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+  const median=(arr)=>{ if(!arr||!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+  const rows=ATT.notes.map((n,i)=>{
+    const acc=ATT._sampleAcc[n.headIdx]||{};
+    const fMed=median(acc.freqs);
+    const tgtPc=((n.midi%12)+12)%12;
+    let detName='—', detCents='', detOct='';
+    if(fMed){
+      const midiF=69+12*Math.log2(fMed/440);
+      const midiR=Math.round(midiF);
+      detName=NOTE_NAMES[((midiR%12)+12)%12];
+      detOct=Math.floor(midiR/12)-1;
+      // cents respecto al target (por clase de altura)
+      const ev=evalPitchCents(fMed, n.midi);
+      detCents=(ev.dir==='baja'?'-':'+')+Math.round(ev.centsAbs);
+    }
+    return {
+      i:i+1,
+      bar:(ATT._barOfHead[n.headIdx]??0)+1, // compás en numeración musical (desde 1)
+      target:NOTE_NAMES[tgtPc],
+      targetMidi:n.midi,
+      detected:fMed?(detName+detOct):'(sin voz)',
+      freqHz:fMed?Math.round(fMed*10)/10:null,
+      centsVsTarget:fMed?detCents:'',
+      result:n.result
+    };
+  });
+  ATT.lastReport={
+    fecha:new Date().toISOString(),
+    tonalidad:STU.lesson.key?STU.lesson.key.name:'',
+    compas:STU.lesson.ts,
+    tempo:STU.tempo,
+    notas:rows
+  };
+}
+
+function downloadDiagnostic(){
+  if(!ATT.lastReport) return;
+  const r=ATT.lastReport;
+  let txt='DIAGNÓSTICO ENTONACIÓN at home\n';
+  txt+='Fecha: '+r.fecha+'\nTonalidad: '+r.tonalidad+' · Compás: '+r.compas+' · Tempo: '+r.tempo+' bpm\n\n';
+  txt+='nota#\tcompás\tobjetivo\tdetectado\tHz\tcents_vs_objetivo\tresultado\n';
+  r.notas.forEach(x=>{ txt+=`${x.i}\t${x.bar}\t${x.target}\t${x.detected}\t${x.freqHz??''}\t${x.centsVsTarget}\t${x.result}\n`; });
+  const blob=new Blob([txt],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='diagnostico-entonacion-'+r.fecha.slice(0,19).replace(/[:T]/g,'-')+'.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// clasifica cuánta ayuda de piano se dio durante el intento
+function helpUsageLabel(){
+  const given=ATT.helpGiven||0;
+  // referencia: nº de compases con nota (máximo si fuera 'every1' todo el rato)
+  const maxBars=Object.keys(ATT._barOfHead||{}).length ? new Set(Object.values(ATT._barOfHead)).size : 24;
+  const ratio = maxBars>0 ? given/maxBars : 0;
+  if(given===0) return {txt:'Sin ayuda', cls:'h0'};
+  if(ratio<=0.30) return {txt:'Casi sin ayuda', cls:'h1'};
+  if(ratio<=0.60) return {txt:'Ayuda moderada', cls:'h2'};
+  if(ratio<=0.90) return {txt:'Con bastante ayuda', cls:'h3'};
+  return {txt:'Con mucha ayuda', cls:'h4'};
+}
+
+function showAttemptResult(pct, micProblem, cutByPhrase, helpLabel){
   const ov=document.getElementById('resultOverlay');
   const sc=document.getElementById('resultScore');
   const msg=document.getElementById('resultMsg');
@@ -3025,17 +3440,22 @@ function showAttemptResult(pct, micProblem, cutByPhrase){
       cls='low2'; txt='Hemos parado: esa frase se te resiste. Vuelve a estudiarla con calma (puedes bajar la velocidad).';
     }
   } else if(micProblem && pct<30){
-    cls='bad'; txt='No te hemos oído bien. Comprueba que el micrófono funcione, prueba a bajar la velocidad o escoge un nivel más bajo.';
+    cls='bad'; txt='No te hemos oído bien. Comprueba el micrófono. Y fíjate en el ritmo: las notas se marcan en azul una a una; esa es la que toca cantar. Si vas más lento o más rápido, el programa detecta notas equivocadas. Prueba a bajar la velocidad o a escoger un nivel más bajo.';
   } else if(pct>=70){
     cls='good'; txt='¡Muy bien! Prueba un nuevo ejercicio.';
   } else if(pct>=50){
     cls='mid'; txt='Vas bien. Puedes volver a estudiar para pulir las notas que fallaron.';
   } else if(pct>=30){
-    cls='low2'; txt='Necesitas estudiarlo más. Prueba a volver a estudiar y a bajar la velocidad.';
+    cls='low2'; txt='Necesitas estudiarlo más. Vuelve a estudiar y prueba a bajar la velocidad. Fíjate en las notas azules: son las que toca cantar en cada momento.';
   } else {
-    cls='bad'; txt='O el micrófono no te está funcionando, o necesitas bajar la velocidad o escoger un nivel más bajo.';
+    cls='bad'; txt='Cuidado con el ritmo: las notas se marcan en azul una a una, y esa es la que debes cantar. Si cantas más despacio que la marca, el programa detecta notas equivocadas. Prueba a bajar la velocidad, revisar el micrófono o escoger un nivel más bajo.';
   }
   msg.textContent=txt;
+  // valoración del nivel de ayuda recibido (informativa, no afecta a la nota)
+  let hl=document.getElementById('resultHelp');
+  if(!hl){ hl=document.createElement('div'); hl.id='resultHelp'; hl.className='result-help'; msg.insertAdjacentElement('afterend', hl); }
+  if(helpLabel){ hl.textContent='Ayuda de piano: '+helpLabel.txt; hl.className='result-help '+helpLabel.cls; hl.style.display=''; }
+  else { hl.style.display='none'; }
   ov.classList.add(cls,'on');
   // bajar a la partitura para que se vean las cabezas y sus colores bajo el panel
   setTimeout(()=>{ const sh=document.getElementById('attemptSheet'); if(sh) sh.scrollIntoView({behavior:'smooth',block:'center'}); }, 200);
@@ -3139,6 +3559,7 @@ function playAccompOnly(){
   const heads=STU._heads||[];
   let noteCursor=0;
   const DURpulses={'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
+  const negrasPorPulso = (den===8)? 1.5 : 1;
   let cursor=0;
   for(let b=0;b<24;b++){
     const phraseIdx=Math.floor(b/8); const isB=(phraseIdx===1);
@@ -3149,7 +3570,7 @@ function playAccompOnly(){
     // resaltado de notas del compás
     let acc=0;
     L.bars[b].notes.forEach(n=>{
-      const beats=DURpulses[n.d.replace('r','')]||0;
+      const durPulsos=(DURpulses[n.d.replace('r','')]||0)/negrasPorPulso;
       if(!n.rest && n.midi!=null){
         const head=heads[noteCursor];
         const tMark=(clackPulses*pulseSec)+(barStart+acc*pulseSec); // desde musicStart
@@ -3157,7 +3578,7 @@ function playAccompOnly(){
         STU._accTimers.push(onId);
         noteCursor++;
       }
-      acc+=beats;
+      acc+=durPulsos;
     });
     cursor+=nPulses*pulseSec;
   }
@@ -3185,15 +3606,25 @@ function flashStudent(txt){
 
 /* wiring de la fase estudio */
 document.getElementById('atStart').onclick=startAttempt;
+document.getElementById('atHelpBtn').onclick=()=>{
+  const info=document.getElementById('atHelpInfo');
+  const open=info.style.display!=='none';
+  info.style.display=open?'none':'';
+  document.getElementById('atHelpBtn').textContent=open?'ⓘ ¿Cómo funciona?':'✕ Cerrar';
+};
 document.getElementById('stTonic').onclick=playTonic;
 document.getElementById('stScale').onclick=playScale;
 document.getElementById('stHint').onclick=toggleHintMode;
 document.getElementById('stAccomp').onclick=playAccompOnly;
-document.getElementById('stSlower').onclick=()=>{ STU.speed='slow'; STU.tempo=STU.baseTempo-15; setSpeedButtons('slow'); };
+document.getElementById('stSlower').onclick=()=>{ STU.speed='slow'; STU.tempo=STU.baseTempo-5; setSpeedButtons('slow'); };
 document.getElementById('stNormal').onclick=()=>{ STU.speed='normal'; STU.tempo=STU.baseTempo; setSpeedButtons('normal'); };
-document.getElementById('stFaster').onclick=()=>{ STU.speed='fast'; STU.tempo=STU.baseTempo+15; setSpeedButtons('fast'); };
+document.getElementById('stFaster').onclick=()=>{ STU.speed='fast'; STU.tempo=STU.baseTempo+5; setSpeedButtons('fast'); };
+// mismo selector en el intento (sincronizado con estudio)
+document.getElementById('atSlower').onclick=()=>{ STU.speed='slow'; STU.tempo=STU.baseTempo-5; setSpeedButtons('slow'); };
+document.getElementById('atNormal').onclick=()=>{ STU.speed='normal'; STU.tempo=STU.baseTempo; setSpeedButtons('normal'); };
+document.getElementById('atFaster').onclick=()=>{ STU.speed='fast'; STU.tempo=STU.baseTempo+5; setSpeedButtons('fast'); };
 document.getElementById('studySkip').onclick=(e)=>{ e.preventDefault(); goToAttempt(); };
-document.getElementById('phExit').onclick=()=>{ stopStudyPhase(); showView('student'); };
+document.getElementById('phExit').onclick=()=>{ stopStudyPhase(); stopMiniTuner(); showView('student'); };
 document.getElementById('phAttempt').onclick=()=>{ if(document.getElementById('phAttempt').classList.contains('locked')){ flashStudent('Primero completa la fase de Estudio (o pulsa «Saltar al intento»).'); } };
 document.getElementById('phStudy').onclick=()=>{ if(!document.getElementById('phStudy').classList.contains('locked')) setPhase('study'); };
 document.getElementById('pwOk').onclick=tryPw;
