@@ -251,8 +251,8 @@
   /* tarjetas de nivel (estética del portal LMEAV) */
   .lvl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
   .lvl{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:14px;padding:22px 24px;cursor:pointer;border:1px solid;transition:background .15s,border-color .15s,transform .1s;font-family:inherit}
-  .lvl .lvl-nm{font-weight:800;font-size:20px;letter-spacing:.01em}
-  .lvl .lvl-cur{font-size:13px;font-weight:600;opacity:.85;letter-spacing:.02em}
+  .lvl .lvl-nm{font-weight:800;font-size:20px;letter-spacing:.01em;white-space:nowrap}
+  .lvl .lvl-cur{font-size:13px;font-weight:600;opacity:.85;letter-spacing:.02em;white-space:nowrap;text-align:right}
   .lvl:active{transform:scale(.98)}
   .lvl-easy{border-color:var(--rit);background:var(--rit-soft);color:var(--rit)}
   .lvl-easy:hover:not(.locked){background:var(--rit);color:#062b1d;border-color:var(--rit)}
@@ -330,6 +330,16 @@
   .st-accomp-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a2238;color:#fff;font-size:12px;padding:7px 11px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:20}
   .st-accomp-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a2238}
   .st-accomp-wrap:hover .st-accomp-tip{opacity:1}
+  /* banner de velocidad (aparece al desbloquear el acompañamiento) */
+  .speed-hint{display:none;font-size:11.5px;color:#2a6cf0;max-width:230px;line-height:1.25;font-style:italic}
+  .speed-hint.show{display:inline-block;animation:speedHintIn .4s ease}
+  @keyframes speedHintIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* destello de desbloqueo del botón acompañamiento */
+  @keyframes accompUnlock{0%{box-shadow:0 0 0 0 rgba(42,108,240,.6)}60%{box-shadow:0 0 0 12px rgba(42,108,240,0)}100%{box-shadow:0 0 0 0 rgba(42,108,240,0)}}
+  .st-tool.just-unlocked{animation:accompUnlock 1s ease-out 2;border-color:#2a6cf0!important;color:#2a6cf0!important}
+  /* estrellitas */
+  .spark{position:fixed;pointer-events:none;font-size:18px;z-index:80;animation:sparkFly .9s ease-out forwards}
+  @keyframes sparkFly{0%{opacity:0;transform:translate(0,0) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.1)}}
   /* cabeza de pista fija (queda rosa permanente y reproducible) */
   .student-sheet .vf-notehead.hint-fixed path{fill:#d65b86!important;stroke:#d65b86!important}
   .student-sheet .vf-notehead.hint-fixed{cursor:pointer}
@@ -420,17 +430,17 @@
   <div id="viewStudent" class="view active">
     <div class="hint">Bienvenido. Elige un nivel para empezar a entonar.</div>
     <div class="lvl-grid">
-      <button class="lvl lvl-easy locked" data-lvl="facil" disabled>
-        <span class="lvl-nm">Fácil</span>
-        <span class="lvl-cur">1º–2º GE · en construcción</span>
+      <button class="lvl lvl-easy locked" data-lvl="facil">
+        <span class="lvl-nm">1º CICLO</span>
+        <span class="lvl-cur">1º–2º GE</span>
       </button>
       <button class="lvl lvl-med" data-lvl="medio">
-        <span class="lvl-nm">Medio</span>
+        <span class="lvl-nm">2º CICLO</span>
         <span class="lvl-cur">3º–4º GE</span>
       </button>
-      <button class="lvl lvl-hard locked" data-lvl="dificil" disabled>
-        <span class="lvl-nm">Difícil</span>
-        <span class="lvl-cur">1º–2º GP · en construcción</span>
+      <button class="lvl lvl-hard locked" data-lvl="dificil">
+        <span class="lvl-nm">3º CICLO</span>
+        <span class="lvl-cur">1º–2º GP</span>
       </button>
     </div>
     <div class="lvl-note">El nivel es orientativo y relativo. Siéntete libre de cambiar a un nivel en el que te resulte útil practicar.<br>Esto es un trabajo complementario al que realizas en clase con tu profesor o profesora.</div>
@@ -472,6 +482,7 @@
             <button class="st-speed on" id="stNormal">Normal</button>
             <button class="st-speed" id="stFaster">Más rápido</button>
           </span>
+          <span class="speed-hint" id="speedHint">Elige una velocidad con la que te sientas a gusto. No afecta a tu puntuación.</span>
         </div>
       </div>
       <div id="studySheet" class="student-sheet"></div>
@@ -2459,7 +2470,7 @@ document.querySelectorAll('.lvl[data-lvl]').forEach(btn=>{
     const lvl=btn.getAttribute('data-lvl');
     if(lvl!=='medio'){
       const soon=document.querySelector('.lvl-soon');
-      if(soon){ soon.textContent='Nivel "'+btn.querySelector('.lvl-nm').textContent+'" — próximamente.'; soon.style.color='var(--ink)'; }
+      if(soon){ soon.textContent='El nivel «'+btn.querySelector('.lvl-nm').textContent.trim()+'» todavía está en construcción. Pronto disponible.'; soon.style.color='var(--ink)'; }
       return;
     }
     startStudentSession('medio');
@@ -2600,20 +2611,67 @@ function startStudyPhase(extra){
   // acompañamiento: bloqueado hasta 2 min en la 1ª entrada; disponible ya en la extra
   const acc=document.getElementById('stAccomp');
   const tip=document.getElementById('stAccompTip');
+  const sh=document.getElementById('speedHint');
   if(extra){ acc.disabled=false; if(tip) tip.style.display='none'; }
-  else { acc.disabled=true; if(tip) tip.style.display=''; }
+  else { acc.disabled=true; if(tip) tip.style.display=''; if(sh) sh.classList.remove('show'); }
   try{ ensureAudioEngine(); ensureSoundfont(); }catch(e){}
+  STU._accompUnlocked = !!extra; // en modo extra ya está disponible desde el inicio
+  if(extra){ const sh=document.getElementById('speedHint'); if(sh) sh.classList.add('show'); }
   if(STU.studyTimer) clearInterval(STU.studyTimer);
   STU.studyTimer=setInterval(()=>{
     STU.studyLeft--;
     updateStudyTimer();
-    if(!extra && STU.studyLeft<=120){
-      document.getElementById('stAccomp').disabled=false;
-      const t=document.getElementById('stAccompTip'); if(t) t.style.display='none';
+    if(!STU._accompUnlocked && STU.studyLeft<=120){
+      STU._accompUnlocked=true;
+      unlockAccompaniment();
     }
     if(STU.studyLeft<=5 && STU.studyLeft>0){ showCountdown(STU.studyLeft); }
     if(STU.studyLeft<=0){ clearInterval(STU.studyTimer); STU.studyTimer=null; goToAttempt(); }
   },1000);
+}
+// desbloqueo del acompañamiento: habilita botón + estrellitas + tintineo + banner de velocidad
+function unlockAccompaniment(){
+  const btn=document.getElementById('stAccomp');
+  btn.disabled=false;
+  const t=document.getElementById('stAccompTip'); if(t) t.style.display='none';
+  btn.classList.add('just-unlocked');
+  setTimeout(()=>btn.classList.remove('just-unlocked'),2100);
+  // banner de velocidad
+  const sh=document.getElementById('speedHint'); if(sh) sh.classList.add('show');
+  // estrellitas alrededor del botón
+  sparkleBurst(btn);
+  // tintineo
+  playChime();
+}
+function sparkleBurst(el){
+  try{
+    const r=el.getBoundingClientRect();
+    const cx=r.left+r.width/2, cy=r.top+r.height/2;
+    const chars=['✨','⭐','🌟','✨','⭐'];
+    for(let i=0;i<10;i++){
+      const s=document.createElement('div'); s.className='spark'; s.textContent=chars[i%chars.length];
+      const ang=(Math.PI*2*i)/10 + Math.random()*0.5;
+      const dist=40+Math.random()*40;
+      s.style.left=cx+'px'; s.style.top=cy+'px';
+      s.style.setProperty('--dx',(Math.cos(ang)*dist)+'px');
+      s.style.setProperty('--dy',(Math.sin(ang)*dist)+'px');
+      document.body.appendChild(s);
+      setTimeout(()=>s.remove(),950);
+    }
+  }catch(e){}
+}
+function playChime(){
+  try{
+    ensureAudioEngine();
+    const ctx=ACMP.ctx; const t=ctx.currentTime;
+    // arpegio cristalino ascendente (tintineo)
+    [1318.5, 1567.98, 2093.0].forEach((f,i)=>{
+      const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
+      const g=ctx.createGain(); const st=t+i*0.07;
+      g.gain.setValueAtTime(0,st); g.gain.linearRampToValueAtTime(0.18,st+0.02); g.gain.exponentialRampToValueAtTime(0.0001,st+0.5);
+      o.connect(g); g.connect(ACMP.master); o.start(st); o.stop(st+0.55);
+    });
+  }catch(e){}
 }
 function setSpeedButtons(which){
   ['stSlower','stNormal','stFaster'].forEach(id=>{
@@ -2967,7 +3025,7 @@ function showAttemptResult(pct, micProblem, cutByPhrase){
       cls='low2'; txt='Hemos parado: esa frase se te resiste. Vuelve a estudiarla con calma (puedes bajar la velocidad).';
     }
   } else if(micProblem && pct<30){
-    cls='bad'; txt='No te hemos oído bien. O el micrófono no está funcionando, o necesitas escoger un nivel más bajo.';
+    cls='bad'; txt='No te hemos oído bien. Comprueba que el micrófono funcione, prueba a bajar la velocidad o escoge un nivel más bajo.';
   } else if(pct>=70){
     cls='good'; txt='¡Muy bien! Prueba un nuevo ejercicio.';
   } else if(pct>=50){
@@ -2975,7 +3033,7 @@ function showAttemptResult(pct, micProblem, cutByPhrase){
   } else if(pct>=30){
     cls='low2'; txt='Necesitas estudiarlo más. Prueba a volver a estudiar y a bajar la velocidad.';
   } else {
-    cls='bad'; txt='O el micrófono no te está funcionando, o necesitas escoger un nivel más bajo.';
+    cls='bad'; txt='O el micrófono no te está funcionando, o necesitas bajar la velocidad o escoger un nivel más bajo.';
   }
   msg.textContent=txt;
   ov.classList.add(cls,'on');
