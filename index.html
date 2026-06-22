@@ -254,18 +254,17 @@
   .view.active{display:block}
 
   /* tarjetas de nivel (estética del portal LMEAV) */
-  .lvl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
-  .lvl{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:14px;padding:22px 24px;cursor:pointer;border:1px solid;transition:background .15s,border-color .15s,transform .1s;font-family:inherit}
-  .lvl .lvl-nm{font-weight:800;font-size:18px;letter-spacing:.01em;white-space:nowrap}
-  .lvl .lvl-cur{font-size:12.5px;font-weight:600;opacity:.85;letter-spacing:.02em;white-space:nowrap;text-align:right}
+  .lvl-grid{display:flex;justify-content:center;gap:20px;margin-top:28px;flex-wrap:wrap}
+  .lvl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    width:190px;height:190px;border-radius:18px;padding:18px;cursor:pointer;
+    border:1px solid var(--line);background:rgba(240,243,250,.06);color:var(--ink);
+    transition:background .15s,border-color .15s,transform .1s;font-family:inherit;text-align:center}
+  .lvl .lvl-nm{font-weight:800;font-size:18px;letter-spacing:.02em;white-space:nowrap;line-height:1.2}
+  .lvl .lvl-cur{font-size:13px;font-weight:600;opacity:.7;letter-spacing:.02em;white-space:nowrap}
   .lvl:active{transform:scale(.98)}
-  .lvl-easy{border-color:var(--rit);background:var(--rit-soft);color:var(--rit)}
-  .lvl-easy:hover:not(.locked){background:var(--rit);color:#062b1d;border-color:var(--rit)}
-  .lvl-med{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
-  .lvl-med:hover:not(.locked){background:var(--gold);color:#2b1d05;border-color:var(--gold)}
-  .lvl-hard{border-color:var(--red);background:var(--red-soft);color:var(--red)}
-  .lvl-hard:hover:not(.locked){background:var(--red);color:#2b0710;border-color:var(--red)}
-  .lvl.locked{border-color:var(--line)!important;background:rgba(233,237,255,.03)!important;color:var(--muted2)!important;cursor:not-allowed;opacity:.7}
+  .lvl-easy, .lvl-med, .lvl-hard{border-color:var(--line);background:rgba(240,243,250,.06);color:var(--ink)}
+  .lvl-med:hover:not(.locked), .lvl-easy:hover:not(.locked), .lvl-hard:hover:not(.locked){background:rgba(240,243,250,.13);border-color:var(--muted)}
+  .lvl.locked{border-color:var(--line)!important;background:rgba(233,237,255,.02)!important;color:var(--muted2)!important;cursor:not-allowed;opacity:.6}
   .lvl.locked .lvl-nm{color:var(--muted2)}
   .lvl-note{text-align:center;color:var(--muted);font-size:12.5px;margin-top:18px;line-height:1.5;max-width:680px;margin-left:auto;margin-right:auto}
   /* afinador de diagnóstico */
@@ -337,6 +336,8 @@
   .mini-tuner.on-amber .mini-tuner-note{color:#f5a623}
   .mini-tuner.on-red .mini-tuner-note{color:#dc2626}
   .ph-exit{font-size:12.5px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+  .ph-newlesson{font-size:12.5px;font-weight:600;color:var(--accent,#2a4ba8);background:transparent;border:1px solid var(--accent,#2a4ba8);border-radius:999px;padding:6px 14px;cursor:pointer;margin-right:8px}
+  .ph-newlesson:hover{background:var(--accent,#2a4ba8);color:#fff}
   .ph-exit:hover{color:var(--ink);border-color:var(--muted)}
   .phase{display:none}
   .phase.active{display:block}
@@ -365,9 +366,10 @@
   .st-accomp-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a2238}
   .st-accomp-wrap:hover .st-accomp-tip{opacity:1}
   /* banner de velocidad (aparece al desbloquear el acompañamiento) */
-  .speed-hint{display:none;font-size:11.5px;color:#2a6cf0;max-width:230px;line-height:1.25;font-style:italic}
-  .speed-hint.show{display:inline-block;animation:speedHintIn .4s ease}
-  @keyframes speedHintIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* aviso de velocidad: integrado en la frase, aparece al desbloquear el acompañamiento */
+  .speed-hint-inline{display:none;font-weight:700;color:#2a6cf0}
+  .speed-hint-inline.show{display:inline;animation:speedHintFlash 1s ease-out 2}
+  @keyframes speedHintFlash{0%,100%{color:#2a6cf0}50%{color:#7fb0ff}}
   /* destello de desbloqueo del botón acompañamiento */
   @keyframes accompUnlock{0%{box-shadow:0 0 0 0 rgba(42,108,240,.6)}60%{box-shadow:0 0 0 12px rgba(42,108,240,0)}100%{box-shadow:0 0 0 0 rgba(42,108,240,0)}}
   .st-tool.just-unlocked{animation:accompUnlock 1s ease-out 2;border-color:#2a6cf0!important;color:#2a6cf0!important}
@@ -491,10 +493,6 @@
         <span class="lvl-nm">SEGUNDO CICLO</span>
         <span class="lvl-cur">3ºGE · 4ºGE</span>
       </button>
-      <button class="lvl lvl-hard locked" data-lvl="dificil">
-        <span class="lvl-nm">TERCER CICLO</span>
-        <span class="lvl-cur">1ºGP · 2ºGP</span>
-      </button>
     </div>
     <div class="lvl-note">El nivel es orientativo y relativo. Siéntete libre de cambiar a un nivel en el que te resulte útil practicar.<br>Esto es un trabajo complementario al que realizas en clase con tu profesor o profesora.</div>
     <div class="lvl-soon">Las lecciones para el alumno están en construcción. Por ahora, entra a edición para crearlas.</div>
@@ -530,6 +528,7 @@
       <button class="ph-tab on" id="phStudy" data-ph="study">Estudio</button>
       <button class="ph-tab locked" id="phAttempt" data-ph="attempt">Intento</button>
       <span class="ph-spacer"></span>
+      <button class="ph-newlesson" id="phNewLesson" title="Saltar a otra lección">🔀 Nueva lección</button>
       <button class="ph-exit" id="phExit" title="Volver a elegir lección">✕ Salir</button>
     </div>
 
@@ -540,7 +539,7 @@
           <div class="study-timer" id="studyTimer">5:00</div>
           <a class="study-skip" id="studySkip" href="#">Saltar al intento →</a>
         </div>
-        <div class="study-text" id="studyText">Este es tu tiempo para practicar. Usa los botones de <b>tónica</b>, <b>escala</b> y <b>pistas</b> para prepararte.</div>
+        <div class="study-text" id="studyText">Este es tu tiempo para practicar. Usa los botones de <b>tónica</b>, <b>escala</b> y <b>pistas</b> para prepararte.<span class="speed-hint-inline" id="speedHint"> Ahora elige una velocidad con la que te sientas a gusto: no afecta a tu puntuación.</span></div>
         <div class="study-tools">
           <button class="st-tool" id="stTonic" title="Escuchar la tónica">♪ Tónica</button>
           <button class="st-tool" id="stScale" title="Escuchar la escala (sube y baja)">♪ Escala</button>
@@ -555,12 +554,6 @@
             <button class="st-speed" id="stSlower">Más lento</button>
             <button class="st-speed on" id="stNormal">Normal</button>
             <button class="st-speed" id="stFaster">Más rápido</button>
-          </span>
-          <span class="speed-hint" id="speedHint">Elige una velocidad con la que te sientas a gusto. No afecta a tu puntuación.</span>
-          <span class="mini-tuner" id="miniTunerStudy" title="Afinador: nota que estás dando">
-            <span class="mini-tuner-ico">🎤</span>
-            <span class="mini-tuner-note" id="miniTunerStudyNote">—</span>
-            <span class="mini-tuner-cents" id="miniTunerStudyCents"></span>
           </span>
         </div>
       </div>
@@ -580,10 +573,6 @@
           </span>
           <button class="att-help-btn" id="atHelpBtn" title="Cómo funciona la ayuda">ⓘ ¿Cómo funciona?</button>
           <button class="att-help-btn" id="atTunerBtn" title="Afinador">🎤 Afinador</button>
-          <span class="mini-tuner" id="miniTunerAtt" title="Nota que estás dando">
-            <span class="mini-tuner-ico">🎤</span>
-            <span class="mini-tuner-note" id="miniTunerAttNote">—</span>
-          </span>
         </div>
         <div class="signal-warn" id="atSignal"></div>
         <div class="att-help-info" id="atHelpInfo" style="display:none">
@@ -969,7 +958,7 @@ function generateLesson(seed){
       let harmony=null;
       if(globalBar===0) harmony={g:0, seventh:false, qual:null};
       const barObj={ ts, notes, harmony };
-      if(isMirror) barObj.mirror=true; // a' refleja a hasta que se edite
+      if(isMirror){ barObj.mirror=true; barObj.gmirror=true; } // a' refleja notas y grados de a hasta que se editen
       bars.push(barObj);
     });
   }
@@ -988,19 +977,34 @@ function mirrorAtoAprime(){
   for(let j=0;j<8;j++){
     const src=LESSON.bars[j];        // a: compases 0..7
     const dst=LESSON.bars[16+j];     // a': compases 16..23
-    if(dst && dst.mirror){
+    if(!dst) continue;
+    if(dst.mirror){
       dst.notes = src.notes.map(n=>Object.assign({}, n));
       dst.ts = src.ts;
     }
+    if(dst.gmirror){
+      // copiar los grados de a (harmony del pulso 0 + harmonyAt extra)
+      dst.harmony = (src.harmony!=null) ? Object.assign({}, src.harmony) : null;
+      if(src.harmonyAt){
+        dst.harmonyAt={};
+        Object.keys(src.harmonyAt).forEach(p=>{ dst.harmonyAt[p]=Object.assign({}, src.harmonyAt[p]); });
+      } else {
+        delete dst.harmonyAt;
+      }
+    }
   }
 }
-// llamar tras editar el compás `barIdx`: desengancha a' o propaga desde a
-function afterEditBar(barIdx){
+// llamar tras editar el compás `barIdx`. kind: 'note' (notas/ritmo) o 'grade' (grados)
+function afterEditBar(barIdx, kind){
+  kind = kind || 'note';
   if(barIdx>=16 && barIdx<=23){
-    // editaste un compás de a' -> se desengancha (deja de reflejar a)
-    if(LESSON.bars[barIdx]) LESSON.bars[barIdx].mirror=false;
+    // editaste un compás de a': se desengancha SOLO lo que editaste
+    if(LESSON.bars[barIdx]){
+      if(kind==='grade') LESSON.bars[barIdx].gmirror=false;
+      else LESSON.bars[barIdx].mirror=false;
+    }
   } else if(barIdx>=0 && barIdx<=7){
-    // editaste a -> propaga a los compases de a' que aún reflejan
+    // editaste a -> propaga a los compases de a' que aún reflejan (cada cosa por su marca)
     mirrorAtoAprime();
   }
 }
@@ -1298,11 +1302,11 @@ function spawnMenu(anchor){
 function openGradeMenu(anchor, lesson, bar, barIdx, pulseIdx){
   const menu=spawnMenu(anchor);
   const inh=document.createElement('div'); inh.className='gg-mi'; inh.textContent='— (heredar)';
-  inh.onclick=()=>{ setHarmonyAt(bar, pulseIdx, null); closeMenus(); renderAll(); };
+  inh.onclick=()=>{ setHarmonyAt(bar, pulseIdx, null); afterEditBar(barIdx,'grade'); closeMenus(); renderAll(); };
   menu.appendChild(inh);
   lesson.labels.forEach((lab,gi)=>{
     const it=document.createElement('div'); it.className='gg-mi'; it.textContent=lab;
-    it.onclick=()=>{ setHarmonyAt(bar, pulseIdx, {g:gi, seventh:false, qual:null}); closeMenus(); renderAll(); };
+    it.onclick=()=>{ setHarmonyAt(bar, pulseIdx, {g:gi, seventh:false, qual:null}); afterEditBar(barIdx,'grade'); closeMenus(); renderAll(); };
     menu.appendChild(it);
   });
 }
@@ -1311,19 +1315,19 @@ function openVariantMenu(anchor, lesson, bar, barIdx, pulseIdx){
   if(!h){ closeMenus(); return; }
   const menu=spawnMenu(anchor);
   const t7=document.createElement('div'); t7.className='gg-mi'; t7.textContent=(h.seventh?'✓ ':'')+'Añadir 7ª';
-  t7.onclick=()=>{ h.seventh=!h.seventh; closeMenus(); renderAll(); };
+  t7.onclick=()=>{ h.seventh=!h.seventh; afterEditBar(barIdx,'grade'); closeMenus(); renderAll(); };
   menu.appendChild(t7);
   const baseLab=lesson.labels[h.g];
   const isDim=baseLab.includes('°');
   if(!isDim){
     const qMaj=document.createElement('div'); qMaj.className='gg-mi'; qMaj.textContent=(h.qual==='maj'?'✓ ':'')+'Forzar mayúscula (mayor)';
-    qMaj.onclick=()=>{ h.qual=(h.qual==='maj'?null:'maj'); closeMenus(); renderAll(); };
+    qMaj.onclick=()=>{ h.qual=(h.qual==='maj'?null:'maj'); afterEditBar(barIdx,'grade'); closeMenus(); renderAll(); };
     const qMin=document.createElement('div'); qMin.className='gg-mi'; qMin.textContent=(h.qual==='min'?'✓ ':'')+'Forzar minúscula (menor)';
-    qMin.onclick=()=>{ h.qual=(h.qual==='min'?null:'min'); closeMenus(); renderAll(); };
+    qMin.onclick=()=>{ h.qual=(h.qual==='min'?null:'min'); afterEditBar(barIdx,'grade'); closeMenus(); renderAll(); };
     menu.appendChild(qMaj); menu.appendChild(qMin);
   }
   const inh=document.createElement('div'); inh.className='gg-mi gg-mi-sep'; inh.textContent='— (quitar grado)';
-  inh.onclick=()=>{ setHarmonyAt(bar, pulseIdx, null); closeMenus(); renderAll(); };
+  inh.onclick=()=>{ setHarmonyAt(bar, pulseIdx, null); afterEditBar(barIdx,'grade'); closeMenus(); renderAll(); };
   menu.appendChild(inh);
 }
 
@@ -2388,6 +2392,7 @@ function addGradeAtCursor(){
   const effP=resolvedHarmonyByPulse(LESSON);
   const inherited=effP[cur.bar+':'+pulseIdx] || {g:0,seventh:false,qual:null};
   setHarmonyAt(bar, pulseIdx, Object.assign({}, inherited));
+  afterEditBar(cur.bar,'grade');
   renderAll();
   flashHint('Grado añadido en el pulso '+(pulseIdx+1)+' · clic en el número para cambiarlo');
 }
@@ -2772,7 +2777,11 @@ async function startStudentSession(level){
   // evitar las ya hechas
   const done=getDoneIds();
   let pool=rows.filter(x=>done.indexOf(x.id)<0);
-  if(!pool.length){ pool=rows; /* si ya hizo todas, reciclar */ }
+  if(!pool.length){
+    // ya las hizo todas: reciclar, pero evitando repetir justo la actual si hay alternativas
+    pool=rows.filter(x=>x.id!==STU.lessonId);
+    if(!pool.length) pool=rows;
+  }
   const pick=pool[Math.floor(Math.random()*pool.length)];
   STU.lesson=pick.leccion; STU.lessonId=pick.id;
   if(soon){ soon.textContent=''; }
@@ -2788,7 +2797,6 @@ function openPractice(){
   // estado inicial de fases
   setPhase('study');
   document.getElementById('phAttempt').classList.add('locked');
-  startMiniTuner();
   renderStudentSheet();
   startStudyPhase(false);
 }
@@ -3625,6 +3633,17 @@ document.getElementById('atNormal').onclick=()=>{ STU.speed='normal'; STU.tempo=
 document.getElementById('atFaster').onclick=()=>{ STU.speed='fast'; STU.tempo=STU.baseTempo+5; setSpeedButtons('fast'); };
 document.getElementById('studySkip').onclick=(e)=>{ e.preventDefault(); goToAttempt(); };
 document.getElementById('phExit').onclick=()=>{ stopStudyPhase(); stopMiniTuner(); showView('student'); };
+document.getElementById('phNewLesson').onclick=()=>{
+  // parar todo lo que pueda estar sonando del ejercicio actual
+  stopStudyPhase();
+  ATT.running=false;
+  if(ATT._analyzeTimer){ clearInterval(ATT._analyzeTimer); ATT._analyzeTimer=null; }
+  (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
+  try{ stopAccomp(); }catch(e){}
+  document.getElementById('resultOverlay').classList.remove('on');
+  if(STU.lessonId!=null) markDone(STU.lessonId);
+  startStudentSession('medio');
+};
 document.getElementById('phAttempt').onclick=()=>{ if(document.getElementById('phAttempt').classList.contains('locked')){ flashStudent('Primero completa la fase de Estudio (o pulsa «Saltar al intento»).'); } };
 document.getElementById('phStudy').onclick=()=>{ if(!document.getElementById('phStudy').classList.contains('locked')) setPhase('study'); };
 document.getElementById('pwOk').onclick=tryPw;
