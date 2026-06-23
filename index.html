@@ -141,7 +141,8 @@
 
   .score-wrap{position:relative;margin:0 auto}
   .score-host{background:transparent;border:none;border-radius:0;padding:0;overflow:visible;box-shadow:none}
-  .score-host svg{display:block;margin:0 auto}
+  .score-host{max-width:100%;overflow:hidden}
+  .score-host svg{display:block;margin:0 auto;max-width:100%;height:auto}
   /* cursor de edición: nota activa */
   g.vf-stavenote.note-active path,
   g.vf-stavenote.note-active rect,
@@ -1213,6 +1214,17 @@ function renderSystem(host, lesson, barFrom, barTo){
   }
 
   const svg = host.querySelector('svg');
+  // hacer el SVG responsive: viewBox con las dimensiones reales + ancho fluido.
+  // así en pantallas estrechas (iPad) se escala sin desbordar la tarjeta.
+  if(svg){
+    svg.setAttribute('viewBox', '0 0 '+totalW+' '+H);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.style.maxWidth = totalW + 'px';
+  }
   return { totalW, pulseStarts, svg, noteRefs };
 }
 
