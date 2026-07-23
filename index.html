@@ -736,6 +736,9 @@ const CELLS = [
   // ===== S. BINARIO (pulso = negra) =====
   {id:'b_negra',     block:'binario', pulses:1, freq:'bas', notes:['q']},
   {id:'b_2cor',      block:'binario', pulses:1, freq:'bas', notes:['8','8']},
+  // Tresillo de corchea (Iago jul-2026): 3 corcheas en un pulso de negra.
+  // El flag t3 viaja con cada nota: render (VF.Tuplet), duraciones (2/3) y audio.
+  {id:'b_tresillo',  block:'binario', pulses:1, freq:'pun', notes:[{d:'8',t3:1},{d:'8',t3:1},{d:'8',t3:1}]},
   {id:'b_npuntC',    block:'binario', pulses:2, freq:'pun', notes:['qd','8']},
   {id:'b_mix',       block:'binario', pulses:1, freq:'pun', notes:['8d','16']},
   {id:'b_sinc_v1',   block:'binario', pulses:2, freq:'pun', notes:['8','q','8']},
@@ -756,11 +759,12 @@ const KEYS = [
   {key:'Am', name:'La m',  tonicMidi:69, mode:'minor', acc:0},
   {key:'Em', name:'Mi m',  tonicMidi:64, mode:'minor', acc:1},
   {key:'Bm', name:'Si m',  tonicMidi:71, mode:'minor', acc:2},
+  {key:'F#m',name:'Fa♯ m', tonicMidi:66, mode:'minor', acc:3},
   {key:'Dm', name:'Re m',  tonicMidi:62, mode:'minor', acc:1},
   {key:'Gm', name:'Sol m', tonicMidi:67, mode:'minor', acc:2},
   {key:'Cm', name:'Do m',  tonicMidi:60, mode:'minor', acc:3},
 ];
-const VF_KEY = {C:'C',G:'G',D:'D',A:'A',F:'F',Bb:'Bb',Eb:'Eb',Am:'Am',Em:'Em',Bm:'Bm',Dm:'Dm',Gm:'Gm',Cm:'Cm'};
+const VF_KEY = {C:'C',G:'G',D:'D',A:'A',F:'F',Bb:'Bb',Eb:'Eb',Am:'Am',Em:'Em',Bm:'Bm','F#m':'F#m',Dm:'Dm',Gm:'Gm',Cm:'Cm'};
 const useFlatsFor = k => ['F','Bb','Eb','Dm','Gm','Cm'].includes(k.key);
 
 const METER_POOL = ['2/4','3/4','6/8'];
@@ -1080,7 +1084,25 @@ function romanLabel(lesson, h){
 }
 
 /* ---------- Render de un sistema (4 compases) con VexFlow ---------- */
-const DURS = {'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+/* TRESILLO (Iago jul-2026): las duraciones internas pasan a unidades ×3
+   (semicorchea=3) para que el tresillo de corchea encaje EXACTO: cada
+   corchea de tresillo vale 4 unidades (3×4=12 = un pulso de negra).
+   Pulso: 12 unidades en 2/4·3/4 · 18 en 6/8. durU(n) respeta el flag t3. */
+const DURS = {'16':3,'8':6,'8d':9,'q':12,'qd':18,'h':24,'hd':36};
+const PULSE_U = den => (den===8)?18:12;
+function durU(n){
+  const d=(typeof n==='object')? n.d : n;
+  const base=DURS[(''+d).replace('r','')]||0;
+  return (typeof n==='object' && n.t3) ? Math.round(base*2/3) : base;
+}
+/* duración de una nota en PULSOS del compás (para el audio):
+   den 4 → pulso=negra · den 8 → pulso=negra con puntillo */
+const DUR_NEGRAS = {'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
+function durPulsosDe(n, den){
+  let negras = DUR_NEGRAS[(''+n.d).replace('r','')]||0;
+  if(n && n.t3) negras *= 2/3;
+  return negras / ((den===8)?1.5:1);
+}
 function midiToVexKey(midi, useFlats){
   const names = useFlats
     ? ['c','db','d','eb','e','f','gb','g','ab','a','bb','b']
@@ -1132,8 +1154,9 @@ function renderSystem(host, lesson, barFrom, barTo){
     if(isLastOfPiece){ stave.setEndBarType(VF.Barline.type.END); } // doble barra final
     stave.setContext(ctx).draw();
 
-    const pulse = (den===8)?6:4;
+    const pulse = PULSE_U(den);
     const vfnotes=[];
+    const tuplets=[]; let t3run=[];   // grupos de tresillo para VF.Tuplet
     let posAcc=0;
     let lastNoteIdxThisBar=null;
     bar.notes.forEach((f,fi)=>{
@@ -1152,15 +1175,18 @@ function renderSystem(host, lesson, barFrom, barTo){
         sn=new VF.StaveNote({keys:[key], duration:base, clef:'treble', stem_direction:stemDir});
       }
       if(dot) sn.addModifier(new VF.Dot(),0);
+      // tresillo: agrupar de 3 en 3 para dibujar el corchete/3 (VF.Tuplet)
+      if(!rest && f.t3){ t3run.push(sn); if(t3run.length===3){ tuplets.push(t3run); t3run=[]; } }
+      else { t3run=[]; }
       if((posAcc % pulse)===0){
         const pulseIdx = Math.floor(posAcc/pulse);
         if(pulseIdx<lesson.pulses){ noteIndexByBarPulse[b+':'+pulseIdx]=globalNoteIdx; }
       }
       lastNoteIdxThisBar=globalNoteIdx;
       noteRefs.push({bar:b, idx:fi, rest});
-      vfnotes.push({sn, base, rest, midi:midiVal, dur:(DURS[raw.replace('r','')]||DURS[base]||1)});
+      vfnotes.push({sn, base, rest, midi:midiVal, dur:durU(f)});
       globalNoteIdx++;
-      posAcc += (DURS[raw.replace('r','')]||DURS[base]||1);
+      posAcc += durU(f);
     });
 
     // beaming manual por pulso. Antes de crear el beam, fijar dirección de plica
@@ -1200,6 +1226,8 @@ function renderSystem(host, lesson, barFrom, barTo){
     new VF.Formatter().joinVoices([voice]).format([voice], w-(isFirst?FIRST_EXTRA+24:24));
     voice.draw(ctx, stave);
     try{ beams.forEach(bm=>bm.setContext(ctx).draw()); }catch(e){}
+    // tresillos: dibujar el "3" (tras las barras, para que se cuelgue de ellas)
+    try{ tuplets.forEach(g=>{ new VF.Tuplet(g, {num_notes:3, notes_occupied:2}).setContext(ctx).draw(); }); }catch(e){}
 
     x += w;
   }
@@ -1246,8 +1274,8 @@ function renderGradeGrid(host, lesson, sysInfo, wrapEl){
   }
   // X de la primera nota (no silencio) de un pulso dado de un compás
   const ts=lesson.ts; const den=parseInt(ts.split('/')[1],10);
-  const pulse=(den===8)?6:4;
-  const DUR={'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+  const pulse=PULSE_U(den);
+  /* duraciones via durU() global (unidades ×3; tresillo = 2/3) */
   function elIdxOfBarPulse(barIdx, pulseIdx){
     // recorrer notas del compás acumulando duración para saber a qué pulso pertenece cada índice de nota
     const notes=lesson.bars[barIdx].notes;
@@ -1255,7 +1283,7 @@ function renderGradeGrid(host, lesson, sysInfo, wrapEl){
     for(let i=0;i<notes.length;i++){
       const p=Math.floor(acc/pulse);
       if(p===pulseIdx && !notes[i].rest){ want=i; break; }
-      acc += DUR[notes[i].d.replace('r','')]||0;
+      acc += durU(notes[i]);
     }
     if(want<0){ // si solo hay silencio en ese pulso, primera nota del compás
       for(let i=0;i<notes.length;i++){ if(!notes[i].rest){ want=i; break; } }
@@ -1611,15 +1639,15 @@ function writePitch(midi){
 function buildPulseList(){
   const out=[];
   const ts=LESSON.ts; const den=parseInt(ts.split('/')[1],10);
-  const pulse=(den===8)?6:4;
-  const DUR={'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+  const pulse=PULSE_U(den);
+  /* duraciones via durU() global (unidades ×3; tresillo = 2/3) */
   LESSON.bars.forEach((bar,b)=>{
     // agrupar índices de nota por pulso
     let pos=0; const byPulse={};
     bar.notes.forEach((n,i)=>{
       const p=Math.floor(pos/pulse);
       (byPulse[p]=byPulse[p]||[]).push(i);
-      pos += DUR[n.d.replace('r','')]||0;
+      pos += durU(n);
     });
     for(let p=0;p<LESSON.pulses;p++){
       if(byPulse[p]) out.push({bar:b, pulse:p, noteIdxs:byPulse[p]});
@@ -1629,11 +1657,11 @@ function buildPulseList(){
 }
 function selectPulseOfNote(bar, idx){
   const ts=LESSON.ts; const den=parseInt(ts.split('/')[1],10);
-  const pulse=(den===8)?6:4;
-  const DUR={'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+  const pulse=PULSE_U(den);
+  /* duraciones via durU() global (unidades ×3; tresillo = 2/3) */
   let pos=0, target=0;
   const notes=LESSON.bars[bar].notes;
-  for(let i=0;i<idx;i++){ pos += DUR[notes[i].d.replace('r','')]||0; }
+  for(let i=0;i<idx;i++){ pos += durU(notes[i]); }
   target=Math.floor(pos/pulse);
   EDIT.ritSel={bar, pulse:target};
   EDIT.ritCycle={key:null, idx:0};
@@ -1731,11 +1759,12 @@ function applyCellToPulse(bar, pulse, cell){
   const tonic = LESSON.key.tonicMidi;
   const newNotes=cell.notes.map((tok,k)=>{
     const d=(typeof tok==='object')?tok.d:tok;
+    const t3=(typeof tok==='object' && tok.t3)?1:0;   // tresillo: conservar el flag
     const rest=(''+d).includes('r');
-    if(rest) return {d:d, rest:true};
+    if(rest) return t3?{d:d, rest:true, t3:1}:{d:d, rest:true};
     const src=oldNotes[k] && !oldNotes[k].rest ? oldNotes[k] : null;
     const midi = src && src.midi!=null ? src.midi : (firstMidi!=null?firstMidi:tonic);
-    return {d:d, midi};
+    return t3?{d:d, midi, t3:1}:{d:d, midi};
   });
   notes.splice(oldIdxs[0], oldIdxs.length, ...newNotes);
   afterEditBar(bar);
@@ -1781,12 +1810,15 @@ function renderCellPreview(holder, cell, ts){
     try{ stave.setConfigForLines([{visible:false},{visible:false},{visible:true},{visible:false},{visible:false}]); }catch(e){}
     stave.setContext(ctx).draw();
     const den=parseInt(ts.split('/')[1],10);
+    const tuplets=[]; let t3run=[];
     const notes=cell.notes.map(tok=>{
       const d=(typeof tok==='object')?tok.d:tok;
+      const t3=(typeof tok==='object' && tok.t3);
       const rest=(''+d).includes('r'); const base=(''+d).replace('r','').replace('d','');
       const sn=new VF.StaveNote({keys:['b/4'], duration:base+(rest?'r':''), stem_direction:1});
       if((''+d).includes('d')) sn.addModifier(new VF.Dot(),0);
       if(!rest){ try{ sn.setKeyStyle(0,{fillStyle:'#1d3a86', strokeStyle:'#1d3a86'}); }catch(e){} }
+      if(!rest && t3){ t3run.push(sn); if(t3run.length===3){ tuplets.push(t3run); t3run=[]; } } else { t3run=[]; }
       return {sn, base, rest};
     });
     let beams=[],run=[];
@@ -1798,6 +1830,7 @@ function renderCellPreview(holder, cell, ts){
     new VF.Formatter().joinVoices([voice]).format([voice], 80);
     voice.draw(ctx, stave);
     beams.forEach(bm=>bm.setContext(ctx).draw());
+    try{ tuplets.forEach(g=>{ new VF.Tuplet(g, {num_notes:3, notes_occupied:2}).setContext(ctx).draw(); }); }catch(e){}
   }catch(e){ holder.textContent='♪'; }
 }
 
@@ -1933,6 +1966,13 @@ function voiceLeadChord(prevVoices, targetPcs){
 }
 
 // construye las voces (midis) del pad para cada compás, con la regla de voice leading
+/* SUELO DE REGISTRO (Iago jul-2026): la nota más grave del colchón nunca baja
+   de Sol3 (MIDI 55). Se mantiene la regla de anclar el acorde a la 1ª nota del
+   alumno en cada frase (sistema de 4 compases), pero si el enlace de acordes
+   acabaría hundiendo la frase por debajo del suelo, TODA la frase sube una
+   octava (el enlace interno se conserva; la nota del alumno queda cubierta
+   por el acorde aunque sea en otra octava). */
+const ACMP_FLOOR_MIDI = 55; // Sol3 (el sol por debajo del Do central)
 function buildPadVoicing(lesson, startBar){
   const effP = resolvedHarmonyByPulse(lesson);
   const padActive = harmonyActiveByPulse(lesson);
@@ -1973,6 +2013,29 @@ function buildPadVoicing(lesson, startBar){
       pPad+=span;
     }
     out[b]=segs;
+  }
+  // --- SUELO DE REGISTRO: revisar cada frase (bloque de 4 compases) ---
+  // Los límites de frase son los SYS_STARTS (y el propio startBar si se
+  // arranca a mitad). Si la nota más grave de la frase queda por debajo de
+  // Sol3, toda la frase sube de octava en bloque (máx. 2 octavas).
+  {
+    const cuts=[startBar];
+    SYS_STARTS.forEach(s=>{ if(s>startBar && cuts.indexOf(s)<0) cuts.push(s); });
+    cuts.sort((a,b)=>a-b);
+    for(let ci=0;ci<cuts.length;ci++){
+      const from=cuts[ci], to=(ci+1<cuts.length)?cuts[ci+1]:24;
+      const segsFrase=[];
+      for(let b=from;b<to;b++){ (out[b]||[]).forEach(s=>segsFrase.push(s)); }
+      if(!segsFrase.length) continue;
+      let shifts=0;
+      while(shifts<2){
+        let minV=Infinity;
+        segsFrase.forEach(s=>{ s.voices.forEach(v=>{ if(v<minV) minV=v; }); });
+        if(minV>=ACMP_FLOOR_MIDI) break;
+        segsFrase.forEach(s=>{ s.voices=s.voices.map(v=>v+12); });
+        shifts++;
+      }
+    }
   }
   return out;
 }
@@ -2183,7 +2246,7 @@ function playLesson(){
     const bpm = LESSON.tempo || ((den===8)? 40 : 50);
     const pulseSec = 60/bpm;
     const beatMs = pulseSec*1000;
-    const DURpulses={'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
+    /* duraciones de audio via durPulsosDe() global (tresillo = 2/3) */
     const startBar = (EDIT.mode==='alturas' && EDIT.sel)? EDIT.sel.bar : 0;
     const padVoicing = buildPadVoicing(LESSON, startBar); // voces midi por compás con voice leading
     const t0 = ctx.currentTime + 0.12;
@@ -2216,8 +2279,7 @@ function playLesson(){
       const negrasPorPulso = (den===8)? 1.5 : 1;
       let acc=0;
       bar.notes.forEach(n=>{
-        const beatsNegras=DURpulses[n.d.replace('r','')]||0;
-        const durPulsos = beatsNegras/negrasPorPulso; // duración en PULSOS reales del compás
+        const durPulsos = durPulsosDe(n, den); // duración en PULSOS reales del compás (tresillo OK)
         const tN = (barStartSec + acc*pulseSec);
         if(!n.rest && n.midi!=null){
           const id=setTimeout(()=>{ if(EDIT.sf && EDIT.playing){ try{ EDIT.sf.play(n.midi,0,{duration:durPulsos*pulseSec}); }catch(e){} } }, tN*1000+120);
@@ -2315,8 +2377,8 @@ function onMIDI(msg){
 function ritApplyLong(fig){
   if(!EDIT.ritSel) return;
   const ts=LESSON.ts; const den=parseInt(ts.split('/')[1],10);
-  const pulse=(den===8)?6:4;
-  const DUR={'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+  const pulse=PULSE_U(den);
+  /* duraciones via durU() global (unidades ×3; tresillo = 2/3) */
   const needPulses = fig==='hd' ? 3 : 2; // hd=3 pulsos, h=2 pulsos (en compases simples)
   const bar=EDIT.ritSel.bar;
   const startPulse=EDIT.ritSel.pulse;
@@ -2342,7 +2404,7 @@ function ritApplyLong(fig){
   notes.forEach((n,i)=>{
     const p=Math.floor(pos/pulse);
     if(p>=startPulse && p<startPulse+span){ if(firstReplacedIdx<0) firstReplacedIdx=i; toReplace.push(i); }
-    pos += DUR[n.d.replace('r','')]||0;
+    pos += durU(n);
   });
   if(firstReplacedIdx<0){ return; }
   // altura: la de la primera nota reemplazada (si la hay)
@@ -2361,8 +2423,8 @@ function ritApplySyncopation(){
   if(!EDIT.ritSel) return;
   const ts=LESSON.ts; const den=parseInt(ts.split('/')[1],10);
   if(den===8){ flashHint('La síncopa C-N-C es para compases simples (2/4, 3/4)'); return; }
-  const pulse=4;
-  const DUR={'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+  const pulse=12;
+  /* duraciones via durU() global (unidades ×3; tresillo = 2/3) */
   const bar=EDIT.ritSel.bar;
   const startPulse=EDIT.ritSel.pulse;
   if(startPulse+2 > LESSON.pulses){ flashHint('No cabe una síncopa aquí (necesita 2 pulsos)'); return; }
@@ -2372,7 +2434,7 @@ function ritApplySyncopation(){
   notes.forEach((n,i)=>{
     const p=Math.floor(pos/pulse);
     if(p>=startPulse && p<startPulse+2){ if(firstIdx<0) firstIdx=i; toReplace.push(i); }
-    pos += DUR[n.d.replace('r','')]||0;
+    pos += durU(n);
   });
   if(firstIdx<0) return;
   const old=toReplace.map(i=>notes[i]);
@@ -2392,11 +2454,11 @@ function ritApplySyncopation(){
 function addGradeAtCursor(){
   const cur=EDIT.seq[EDIT.cursor]; if(!cur) return;
   const ts=LESSON.ts; const den=parseInt(ts.split('/')[1],10);
-  const pulse=(den===8)?6:4;
-  const DUR={'16':1,'8':2,'8d':3,'q':4,'qd':6,'h':8,'hd':12};
+  const pulse=PULSE_U(den);
+  /* duraciones via durU() global (unidades ×3; tresillo = 2/3) */
   const notes=LESSON.bars[cur.bar].notes;
   let acc=0;
-  for(let i=0;i<cur.idx;i++){ acc += DUR[notes[i].d.replace('r','')]||0; }
+  for(let i=0;i<cur.idx;i++){ acc += durU(notes[i]); }
   const pulseIdx=Math.floor(acc/pulse);
   const bar=LESSON.bars[cur.bar];
   if(fixedHarmonyAt(bar, pulseIdx)){ flashHint('Ya hay un grado en ese pulso'); return; }
@@ -2485,6 +2547,7 @@ const CELL_META = {
   t_negcor_v1: {name:'Negra + corchea',       not:'q 8',    block:'ternario'},
   b_negra:     {name:'Negra',                 not:'q',      block:'binario'},
   b_2cor:      {name:'2 corcheas',            not:'8 8',    block:'binario'},
+  b_tresillo:  {name:'Tresillo de corchea',   not:'3:8 8 8',block:'binario'},
   b_npuntC:    {name:'Negra c.p. + corchea',  not:'qd 8',   block:'binario'},
   b_mix:       {name:'Corchea c.p. + semi',   not:'8d 16',  block:'binario'},
   b_sinc_v1:   {name:'Síncopa (C-N-C)',       not:'8 q 8',  block:'binario'},
@@ -2497,8 +2560,10 @@ const FREQ_NAME = {bas:'Básico', rec:'Recurrente', oca:'Ocasional', pun:'Puntua
 const cfg2GE = {
   cells: CELLS.map(c=>({id:c.id, on:true, freq:c.freq})),
   meters: {'2/4':true,'3/4':true,'6/8':true},
-  // nivel medio (10 tonalidades hasta 2-3 alteraciones)
-  keys: {'C':true,'G':true,'D':true,'F':true,'Bb':true,'Am':true,'Em':true,'Bm':true,'Dm':true,'Gm':true},
+  // nivel medio · 14 tonalidades hasta 3 alteraciones (Iago jul-2026:
+  // añadidas La M, Mi♭ M, Fa♯ m y Do m; se pueden apagar en el panel)
+  keys: {'C':true,'G':true,'D':true,'A':true,'F':true,'Bb':true,'Eb':true,
+         'Am':true,'Em':true,'Bm':true,'F#m':true,'Dm':true,'Gm':true,'Cm':true},
 };
 
 function buildCfgPanel(){
@@ -3116,15 +3181,14 @@ const ATT = { running:false, _heads:[], notes:[], timers:[] };
 function buildAttemptTimeline(){
   const L=STU.lesson; const den=parseInt(L.ts.split('/')[1],10);
   const pulseSec=60/STU.tempo;
-  const DURpulses={'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
+  /* duraciones de audio via durPulsosDe() global (tresillo = 2/3) */
   const negrasPorPulso = (den===8)? 1.5 : 1;
   const notes=[]; let t=0; let headIdx=0;
   ATT._barOfHead={};
   L.bars.forEach((bar,b)=>{
     const phraseIdx=Math.floor(b/8);
     bar.notes.forEach(n=>{
-      const beatsNegras=DURpulses[n.d.replace('r','')]||0;
-      const dur=(beatsNegras/negrasPorPulso)*pulseSec; // duración real en segundos
+      const dur=durPulsosDe(n, den)*pulseSec; // duración real en segundos (tresillo OK)
       if(!n.rest && n.midi!=null){
         notes.push({ midi:n.midi, t0:t, t1:t+dur, headIdx:headIdx, phrase:phraseIdx, result:null });
         ATT._barOfHead[headIdx]=b;
@@ -3578,7 +3642,7 @@ function playAccompOnly(){
   // marca azul: programar resaltado de cada nota en su tiempo
   const heads=STU._heads||[];
   let noteCursor=0;
-  const DURpulses={'16':0.25,'8':0.5,'8d':0.75,'q':1,'qd':1.5,'h':2,'hd':3};
+  /* duraciones de audio via durPulsosDe() global (tresillo = 2/3) */
   const negrasPorPulso = (den===8)? 1.5 : 1;
   let cursor=0;
   for(let b=0;b<24;b++){
@@ -3590,7 +3654,7 @@ function playAccompOnly(){
     // resaltado de notas del compás
     let acc=0;
     L.bars[b].notes.forEach(n=>{
-      const durPulsos=(DURpulses[n.d.replace('r','')]||0)/negrasPorPulso;
+      const durPulsos=durPulsosDe(n, den);
       if(!n.rest && n.midi!=null){
         const head=heads[noteCursor];
         const tMark=(clackPulses*pulseSec)+(barStart+acc*pulseSec); // desde musicStart
