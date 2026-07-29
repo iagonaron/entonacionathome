@@ -958,7 +958,9 @@ function generateLesson(seed){
       const globalBar=ph*8+j;
       const notes=b.tokens.map(t=>{
         const raw=t.d; const rest=/r/.test(raw);
-        return rest ? {d:raw, rest:true} : {d:raw, midi:k.tonicMidi};
+        const nn = rest ? {d:raw, rest:true} : {d:raw, midi:k.tonicMidi};
+        if(t.t3) nn.t3=1;                 // ¡conservar la marca de tresillo! (si se pierde, el compás suma de más)
+        return nn;
       });
       let harmony=null;
       if(globalBar===0) harmony={g:0, seventh:false, qual:null};
@@ -1012,6 +1014,518 @@ function afterEditBar(barIdx, kind){
     // editaste a -> propaga a los compases de a' que aún reflejan (cada cosa por su marca)
     mirrorAtoAprime();
   }
+}
+
+/* =========================================================================
+   MOTOR COMPLETO (ritmo + melodía + armonía + matices) — "estilo Iago"
+   Destilado de las 14 lecciones registradas y de Entonación 3/4 (Tordesillas):
+   · 3 frases a·b·a' de 8 compases (antecedente 4 + consecuente 4)
+   · frase a: arranca en el 1er grado y cadencia auténtica (o semicadencia V)
+   · frase b: pivota al VI (mayor) o a la región del relativo (menor), motivos
+     repetidos, cierre ABIERTO (V · vi rota · III/IV/VII)
+   · frase a': arranque literal de a (2 compases) y cierre V(7)→I (picardía rara)
+   · melodía: ~73% grados conjuntos, saltos dentro del acorde compensados,
+     nota de pulso = nota del acorde (~87%), extrañas por grado conjunto,
+     sensible del menor resuelta, melódica asc./natural desc.
+   · armonía: 1 acorde/compás (80%), 2º acorde en el pulso 2 (2/4·6/8),
+     V/vi cifrado como III mayor 7ª, iv prestado, VII7 menor, picardía
+   · matices por frase (b siempre contrasta) y tempos por compás.
+   El profesor puede editarlo TODO después: el motor solo rellena la lección.
+   ========================================================================= */
+const ME={
+  DYN_SCHEMES:[ [['mp','mf','mp'],4],[['mf','mp','mf'],3],[['mf','mp','f'],2],
+    [['mp','f','mp'],1],[['f','p','f'],1],[['mp','p','mf'],1],[['p','mf','mp'],1],[['mf','f','f'],1] ],
+  TEMPO:{'6/8':[40,48],'2/4':[45,58],'3/4':[58,66]},
+};
+function meW(bag,rnd){ // bag=[[val,peso],...]
+  let t=0; bag.forEach(x=>t+=x[1]); let r=rnd()*t;
+  for(const [v,w] of bag){ r-=w; if(r<=0) return v; } return bag[bag.length-1][0];
+}
+/* ---- diccionario de acordes del plan → {g,seventh,qual} ---- */
+function meChord(tok){
+  const deg=parseInt(tok.charAt(0),10);        // 1º carácter = grado ('77' = VII con 7ª)
+  const rest=tok.slice(1);
+  return {g:deg-1, seventh:/7/.test(rest), qual:/maj/.test(rest)?'maj':(/min/.test(rest)?'min':null)};
+}
+/* ---- plantillas armónicas por frase (tokens '1'..'7', sufijos 7/maj/min; 'X Y' = 2 acordes) ---- */
+const ME_HARM={
+  majorA:[
+    ['1','5','1','5','1','4','5 57','1'],
+    ['1','4','1','5','1','2','57','1'],
+    ['1','6','4','5','1','4','1 5','1'],
+    ['1','5','6','5','1','4','2 57','1'],
+    ['1','4 5','1','5','6','4','5','1'],
+    ['1','5','1 6','5','1','2','4 5','1'],
+  ],
+  majorAsemi:[      // variante: la frase a cierra en semicadencia (melodía en 2)
+    ['1','4','1','1 5','1','6','4','5'],
+    ['1','5','6','1','4','1','2','57'],
+  ],
+  majorB:[
+    ['6','4','6','5','6','2','5','5'],
+    ['6','3maj7','6','5','4','1','2 5','6'],
+    ['6','5','1','3maj','6','4','5','6'],
+    ['6','2','5','1','6','4','57','5'],
+    ['6','3maj','6','1','6','2','4 5','4'],
+    ['1','6','4','1','2','6','4 5','5'],
+  ],
+  minorA:[
+    ['1','5','1','5','1','4','5 57','1'],
+    ['1','4','1','5','6','2','57','1'],
+    ['1','5','4','5','1','6','1 5','1'],
+    ['1','6','4','5','1','4','2 57','1'],
+  ],
+  minorAsemi:[
+    ['1','4','6','1 5','1','4','1','5'],
+    ['1','5','1','4','6','1','4','57'],
+  ],
+  minorB:[
+    ['3','7','3','7','3','6','5','5'],
+    ['1','5','1','5','6','4','5','1'],
+    ['3','7','1','5','3','77','5','7'],
+    ['1','4','1','5','1','6','4 5','1'],
+    ['3','6','7','3','4','1','5','5'],
+    ['7','3','7','3','6','4','57','5'],
+  ],
+};
+/* segundo acorde del compás: pulso donde se ancla según el compás */
+function meSecondPulse(ts){ return ts==='3/4' ? 2 : 1; }
+/* aplica un plan de 8 tokens a los compases barFrom..barFrom+7 */
+function meApplyHarm(L, barFrom, plan){
+  const sp=meSecondPulse(L.ts);
+  for(let j=0;j<8;j++){
+    const bar=L.bars[barFrom+j];
+    bar.harmony=null; delete bar.harmonyAt;
+    const parts=plan[j].split(' ');
+    bar.harmony=meChord(parts[0]);
+    if(parts[1] && L.pulses>sp-0){ bar.harmonyAt={}; bar.harmonyAt[sp]=meChord(parts[1]); }
+  }
+}
+function mePlanHarmony(L,rnd){
+  const minor=(L.key.mode==='minor');
+  const semiA = rnd()<0.28;                       // frase a: 28% semicadencia (como en las 14)
+  const A = meW((minor?(semiA?ME_HARM.minorAsemi:ME_HARM.minorA):(semiA?ME_HARM.majorAsemi:ME_HARM.majorA)).map(t=>[t,1]),rnd).slice();
+  const B = meW((minor?ME_HARM.minorB:ME_HARM.majorB).map(t=>[t,1]),rnd).slice();
+  const A2=A.slice();
+  // a': cierre SIEMPRE auténtico V(7)->I, con predominante en el c.7
+  A2[6]=meW([['5 57',3],['57',3],['4 57',2],['2 57',2]],rnd);
+  A2[7]='1';
+  if(minor && rnd()<0.18) A2[7]='1maj';           // picardía ocasional
+  if(!minor && rnd()<0.15) A2[5]='4min';          // iv prestado como color del tramo final
+  meApplyHarm(L,0,A); meApplyHarm(L,8,B); meApplyHarm(L,16,A2);
+  L._cadA = semiA?'semi':'aut';
+  L._endB = B[7];
+  return {A,B,A2};
+}
+/* ---- utilidades melódicas ---- */
+const ME_MAJ=[0,2,4,5,7,9,11], ME_MIN=[0,2,3,5,7,8,10];
+function mePcsOf(L,h){ return chordPitchClasses(L,h).pcs; }
+function meIsMinor(L){ return L.key.mode==='minor'; }
+/* escala efectiva (pcs 0-11 absolutos) para notas de paso según armonía y dirección */
+function meScalePcs(L,h,dir){
+  const t=L.key.tonicMidi%12;
+  const base=(meIsMinor(L)?ME_MIN:ME_MAJ).map(x=>(t+x)%12);
+  if(meIsMinor(L)){
+    const relZone = h && (h.g===2||h.g===6) && !h.qual;   // III / VII: región del relativo → natural puro
+    const domZone = h && (h.g===4);                        // V: sensible (y 6ª si sube)
+    if(!relZone && domZone){
+      const out=base.slice();
+      out[6]=(t+11)%12;                                    // 7ª elevada (sensible)
+      if(dir>0) out[5]=(t+9)%12;                           // melódica ascendente: 6ª elevada
+      return out;
+    }
+  }
+  return base;
+}
+function meInWin(L,m){ return m>=L._lo && m<=L._hi; }
+function meCands(L,pcs,near,span){
+  const out=[];
+  for(let m=near-span;m<=near+span;m++){ if(meInWin(L,m) && pcs.includes(((m%12)+12)%12)) out.push(m); }
+  return out;
+}
+/* candidatos de PASO (grado conjunto) desde prev según escala efectiva */
+function meStepCands(L,h,prev){
+  const out=[];
+  for(const dir of [1,-1]){
+    const sc=meScalePcs(L,h,dir);
+    for(let d=1;d<=2;d++){ const m=prev+dir*d; if(meInWin(L,m) && sc.includes(((m%12)+12)%12)){ out.push(m); break; } }
+  }
+  // floreo inferior de la tónica con sensible (menor): semitono bajo la tónica
+  if(meIsMinor(L)){ const lead=prev-1;
+    if(((lead- L.key.tonicMidi)%12+12)%12===11 && meInWin(L,lead) && !out.includes(lead)) out.push(lead);
+  }
+  return out;
+}
+/* estructura de posiciones de una frase: [{bar, noteIdx, onPulse, pulseIdx}] (sin silencios) */
+function meSlots(L,barFrom){
+  const den=parseInt(L.ts.split('/')[1],10); const P=(den===8)?1.5:1.0;
+  const slots=[];
+  for(let j=0;j<8;j++){
+    const bar=L.bars[barFrom+j]; let acc=0;
+    bar.notes.forEach((n,idx)=>{
+      if(!n.rest){
+        const on=Math.abs(acc%P)<1e-6;
+        slots.push({bar:barFrom+j, j, idx, on, pulse:Math.min(Math.floor(acc/P),L.pulses-1)});
+      }
+      acc+=durPulsosDe(n,den)*((den===8)?1.5:1);
+    });
+  }
+  return slots;
+}
+/* objetivo cadencial de la frase: midi exacto de la última nota */
+function meCadTarget(L,phrase,endChordTok,prev,rnd){
+  const t=L.key.tonicMidi;
+  const near=(pc)=>{ // midi de clase pc más cercano a prev dentro de la ventana
+    let best=null,bd=99;
+    for(let m=L._lo;m<=L._hi;m++){ if(((m%12)+12)%12===pc){ const d=Math.abs(m-prev); if(d<bd){bd=d;best=m;} } }
+    return best;
+  };
+  const deg=(d,alt)=>{ const sc=(meIsMinor(L)?ME_MIN:ME_MAJ); let pc=(t+sc[d])%12; if(alt) pc=(pc+alt+12)%12; return near(pc); };
+  if(phrase!=='b'){
+    if(L._cadA==='semi' && phrase==='a'){ return meW([[deg(1),7],[deg(6, meIsMinor(L)?1:0),3]],rnd); } // 2 sobre V (o sensible)
+    return near(t%12);                                                                  // tónica
+  }
+  // frase b: nota del acorde final (fundamental o 3ª)
+  const h=meChord(endChordTok);
+  const pcs=mePcsOf(L,h);
+  return meW([[near(pcs[0]),5],[near(pcs[1]),3],[near(pcs[2]),2]],rnd);
+}
+/* ---- compositor de una frase ---- */
+function meComposePhrase(L,phraseIdx,rnd,opts){
+  const barFrom=phraseIdx*8;
+  const effP=resolvedHarmonyByPulse(L);
+  const slots=meSlots(L,barFrom);
+  if(!slots.length) return true;
+  const isA=phraseIdx===0, isB=phraseIdx===1, isA2=phraseIdx===2;
+  const t=L.key.tonicMidi;
+  // nota inicial
+  let start;
+  if(isA){ start=meW([[t,8],[t+(meIsMinor(L)?3:4),1],[t+7,1]],rnd); }
+  else {
+    const h0=effP[(barFrom)+':0']||{g:0};
+    const pcs=mePcsOf(L,h0);
+    const c=meCands(L,pcs,opts.prevEnd??t, 7);
+    start=c.length?c[Math.floor(rnd()*c.length)]:t;
+  }
+  // clímax de la frase: techo suave
+  const ceil = L._hi - (rnd()<0.5?0:2);
+  const climaxSlot = 2+Math.floor(rnd()*(Math.max(3,slots.length-6)));
+  const cadIdx=slots.length-1;
+  const cadMidi=meCadTarget(L, isB?'b':(isA?'a':"a'"), L._endTok[phraseIdx], slots.length>4?start:t, rnd);
+  const out=new Array(slots.length);
+  let ok=false;
+  for(let attempt=0;attempt<80 && !ok;attempt++){
+    let prev=start, prevNC=false, dirRun=0, leaps=0, fail=false;
+    for(let i=0;i<slots.length;i++){
+      const s=slots[i];
+      const h=effP[s.bar+':'+s.pulse]||{g:0,seventh:false,qual:null};
+      const pcs=mePcsOf(L,h);
+      let choice=null;
+      if(i===0){ choice=start; }
+      else if(i===cadIdx){
+        // última nota: objetivo cadencial; debe llegarse por grado o salto pequeño del acorde
+        if(Math.abs(cadMidi-prev)<=4 || (Math.abs(cadMidi-prev)<=7 && pcs.includes(((prev%12)+12)%12))) choice=cadMidi;
+        else { fail=true; break; }
+      }
+      else if(i===cadIdx-1 && !isB && L._cadA!=='semi'){
+        // penúltima: preparar 2→1 o sensible→1 si el final es tónica
+        const finT=cadMidi;
+        const opts2=[finT+2, finT-1].filter(m=> meInWin(L,m) && Math.abs(m-prev)<=5 &&
+          (pcs.includes(((m%12)+12)%12) || Math.abs(m-prev)<=2));
+        if(opts2.length) choice=opts2[Math.floor(rnd()*opts2.length)];
+      }
+      if(choice==null){
+        let cands=[];
+        if(prevNC){
+          // tras nota extraña: SOLO continuar por grado (paso) o resolver en acorde adyacente
+          cands=meStepCands(L,h,prev).map(m=>({m,w: pcs.includes(((m%12)+12)%12)?6:2 }));
+        } else if(s.on){
+          // pulso: nota del acorde (cerca), con algún salto permitido
+          meCands(L,pcs,prev,7).forEach(m=>{
+            const d=Math.abs(m-prev);
+            let w = d===0?0.6 : d<=2?7.5 : d<=4?2.6 : d<=7?0.9 : 0;
+            if(m>ceil) w*=0.15;
+            if(dirRun>=3 && Math.sign(m-prev)===Math.sign(dirRun)) w*=0.3;
+            if(w>0) cands.push({m,w});
+          });
+          // salto de octava/6ª muy raro
+          [prev+9,prev+12,prev-9,prev-12].forEach(m=>{ if(meInWin(L,m)&&pcs.includes(((m%12)+12)%12)&&leaps<1&&rnd()<0.05) cands.push({m,w:0.25}); });
+          // paso (extraña de paso acentuada NO: en pulso, extraña solo floreo suave, poco peso)
+          meStepCands(L,h,prev).forEach(m=>{ if(!pcs.includes(((m%12)+12)%12)) cands.push({m,w:0.6}); });
+        } else {
+          // fuera de pulso: paso/floreo o nota del acorde cercana
+          meStepCands(L,h,prev).forEach(m=>cands.push({m,w: pcs.includes(((m%12)+12)%12)?5.5:3.0}));
+          meCands(L,pcs,prev,5).forEach(m=>{
+            const d=Math.abs(m-prev);
+            let w=d===0?0.4: d<=2?0 : d<=4?1.3 : 0.6;    // los pasos ya están; aquí solo 3ªs/4ªs del acorde
+            if(m>ceil) w*=0.15;
+            if(w>0) cands.push({m,w});
+          });
+        }
+        // clímax: cerca del slot elegido, empujar hacia arriba
+        if(Math.abs(i-climaxSlot)<=1) cands.forEach(c=>{ if(c.m>prev) c.w*=1.8; });
+        cands=cands.filter(c=>meInWin(L,c.m));
+        if(!cands.length){ fail=true; break; }
+        // elegir ponderado
+        let tot=0; cands.forEach(c=>tot+=c.w); let r=rnd()*tot;
+        for(const c of cands){ r-=c.w; if(r<=0){ choice=c.m; break; } }
+        if(choice==null) choice=cands[cands.length-1].m;
+      }
+      const iv=choice-prev;
+      // control de saltos
+      if(Math.abs(iv)>2){
+        if(prevNC){ fail=true; break; }                       // salto tras extraña: prohibido
+        if(Math.abs(iv)>7 && !(Math.abs(iv)===9||Math.abs(iv)===12)){ fail=true; break; }
+        if(Math.abs(iv)===6 || Math.abs(iv)===10 || Math.abs(iv)===11){ fail=true; break; } // tritono/7ª
+        leaps++;
+      }
+      dirRun = (Math.sign(iv)===Math.sign(dirRun)&&iv!==0) ? dirRun+Math.sign(iv) : Math.sign(iv);
+      prevNC = !pcs.includes(((choice%12)+12)%12);
+      out[i]=choice; prev=choice;
+    }
+    if(!fail){
+      // validación de frase: última nota extraña no permitida; conjuntos suficientes
+      let conj=0;
+      for(let i=1;i<out.length;i++){ if(Math.abs(out[i]-out[i-1])<=2) conj++; }
+      if(conj/(out.length-1)>=0.55) ok=true;
+    }
+  }
+  if(!ok) return false;
+  // escribir midis
+  let z=0;
+  for(let j=0;j<8;j++){
+    const bar=L.bars[barFrom+j];
+    bar.notes.forEach(n=>{ if(!n.rest){ n.midi=out[z++]; delete n._enh; } });
+    bar.mirror=false; bar.gmirror=false;
+  }
+  L._endMidi=out[out.length-1];
+  return true;
+}
+/* ---- validación global de la lección ---- */
+function meValidate(L){
+  const mel=[];
+  L.bars.forEach(bar=>bar.notes.forEach(n=>{ if(!n.rest) mel.push(n.midi); }));
+  if(mel.length<40) return false;
+  let conj=0, leaps7=0, rep=0;
+  for(let i=1;i<mel.length;i++){
+    const d=Math.abs(mel[i]-mel[i-1]);
+    if(d===0) rep++;
+    else if(d<=2) conj++;
+    else if(d>7) leaps7++;
+    if(d===6||d===10||d===11) return false;
+  }
+  const n=mel.length-1;
+  if(conj/n<0.63) return false;
+  { const tpc=L.key.tonicMidi%12;
+    const sc=(L.key.mode==='minor'?ME_MIN:ME_MAJ).map(x=>(tpc+x)%12);
+    const nch=mel.filter(m=>!sc.includes(((m%12)+12)%12)).length;
+    if(nch>8) return false; }
+  if(leaps7>2) return false;
+  if(rep/n>0.14) return false;
+  const mx=Math.max.apply(null,mel), mn=Math.min.apply(null,mel);
+  if(mx-mn>19 || mx-mn<10) return false;
+  if(mel.filter(m=>m===mx).length>3) return false;
+  // nota de pulso = nota del acorde ≥ 82%
+  const effP=resolvedHarmonyByPulse(L);
+  const den=parseInt(L.ts.split('/')[1],10); const P=(den===8)?1.5:1.0;
+  let on=0,onCt=0;
+  L.bars.forEach((bar,b)=>{ let acc=0;
+    bar.notes.forEach(nn=>{
+      if(!nn.rest && Math.abs(acc%P)<1e-6){
+        const h=effP[b+':'+Math.min(Math.floor(acc/P),L.pulses-1)];
+        on++; if(chordPitchClasses(L,h).pcs.includes(((nn.midi%12)+12)%12)) onCt++;
+      }
+      acc+=durPulsosDe(nn,den)*((den===8)?1.5:1);
+    });
+  });
+  if(on && onCt/on<0.82) return false;
+  return true;
+}
+/* grafía de las notas cromáticas: ascendente → sostenido (sensible/elevada), descendente → bemol.
+   Se materializa con el flag _enh que ya usa el render (invierte la preferencia de la tonalidad). */
+function meSpellChromatics(L){
+  const defFlats=useFlatsFor(L.key);
+  const tpc=L.key.tonicMidi%12;
+  const sc=(L.key.mode==='minor'?ME_MIN:ME_MAJ).map(x=>(tpc+x)%12);
+  const seq=[];
+  L.bars.forEach(bar=>bar.notes.forEach(n=>{ if(!n.rest) seq.push(n); }));
+  const lead=(tpc+11)%12, six=(tpc+9)%12;              // sensible y 6ª elevada del menor
+  seq.forEach((n,i)=>{
+    delete n._enh;
+    const pc=((n.midi%12)+12)%12;
+    if(sc.includes(pc)) return;                        // diatónica: grafía de la armadura
+    const next=seq[i+1];
+    let wantSharp = !next || next.midi>n.midi;         // resuelve subiendo (o final) → ♯
+    if(pc===lead || (L.key.mode==='minor' && pc===six)) wantSharp=true;   // sensible / VI♯: SIEMPRE ♯
+    const useF = !wantSharp;                           // bajando → ♭
+    if(useF!==defFlats) n._enh=true;                   // invertir si la tonalidad no coincide
+  });
+}
+/* puntuación de una lección terminada (0 = perfecta; se usa para quedarse con la MEJOR candidata) */
+function meScore(L){
+  const mel=[]; L.bars.forEach(bar=>bar.notes.forEach(n=>{ if(!n.rest) mel.push(n.midi); }));
+  if(mel.length<40) return 999;
+  let conj=0, leaps7=0, rep=0, bad=0;
+  for(let i=1;i<mel.length;i++){ const d=Math.abs(mel[i]-mel[i-1]);
+    if(d===0) rep++; else if(d<=2) conj++; else if(d>7) leaps7++;
+    if(d===6||d===10||d===11) bad+=10; }
+  const n=mel.length-1;
+  let sc=bad;
+  sc+=Math.max(0,(0.63-conj/n))*100;
+  sc+=Math.max(0,leaps7-2)*4 + Math.max(0,rep/n-0.14)*60;
+  const mx=Math.max.apply(null,mel), mn=Math.min.apply(null,mel);
+  if(mx-mn>19) sc+=(mx-mn-19)*4;
+  if(mx-mn<10) sc+=(10-(mx-mn))*4;
+  const tpc=L.key.tonicMidi%12;
+  const scl=(L.key.mode==='minor'?ME_MIN:ME_MAJ).map(x=>(tpc+x)%12);
+  const nch=mel.filter(m=>!scl.includes(((m%12)+12)%12)).length;
+  sc+=Math.max(0,nch-8)*3;
+  return sc;
+}
+/* ---- motor principal: lección completa ---- */
+function genLessonFull(seed){
+  let bestL=null, bestSc=1e9;
+  for(let big=0;big<30;big++){
+    const s=(seed+big*7919)>>>0;
+    const L=generateLesson(s);
+    const rnd=rng((s^0x5bd1e995)>>>0);
+    // --- ritmo: a' deja de ser espejo (se reescribe salvo los 2 primeros compases) ---
+    const freqById={},onById={};
+    cfg2GE.cells.forEach(c=>{ freqById[c.id]=c.freq; onById[c.id]=c.on; });
+    const liveCatalog=CELLS.filter(c=>onById[c.id]!==false).map(c=>Object.assign({},c,{freq:freqById[c.id]||c.freq}));
+    const pulseFig=(L.ts==='6/8')?'qd':'q';
+    for(let j=2;j<7;j++){
+      const r=pickRhythmForBar(liveCatalog,L.ts,rnd,{forcePunFirst:(j>=2),pulseFig});
+      L.bars[16+j].notes=r.tokens.map(tk=>{ const raw=tk.d; const nn=/r/.test(raw)?{d:raw,rest:true}:{d:raw,midi:L.key.tonicMidi}; if(tk.t3) nn.t3=1; return nn; });
+    }
+    { const closeKind=(rnd()<0.5)?'fullBar':'figSil';
+      const rc=pickRhythmForBar(liveCatalog,L.ts,rnd,{closeKind,pulseFig});
+      L.bars[23].notes=rc.tokens.map(tk=>{ const raw=tk.d; const nn=/r/.test(raw)?{d:raw,rest:true}:{d:raw,midi:L.key.tonicMidi}; if(tk.t3) nn.t3=1; return nn; });
+    }
+    // compás 4 de cada frase: tiende a calmarse (figura de pulso + reposo)
+    [3,11,19].forEach(b=>{
+      if(rnd()<0.5){
+        const den=parseInt(L.ts.split('/')[1],10);
+        const toks = L.ts==='2/4' ? (rnd()<0.5?[{d:'q'},{d:'qr',rest:true}]:[{d:'h'}])
+                   : L.ts==='3/4' ? meW([[[{d:'h'},{d:'q'}],3],[[{d:'q'},{d:'qr',rest:true},{d:'qr',rest:true}],2],[[{d:'hd'}],2]],rnd)
+                   : (rnd()<0.6?[{d:'qd'},{d:'qdr',rest:true}]:[{d:'qd'},{d:'qd'}]);
+        L.bars[b].notes=toks.map(tk=> tk.rest?{d:tk.d,rest:true}:{d:tk.d,midi:L.key.tonicMidi});
+      }
+    });
+    // frase b: motivo repetido (secuencia) — compases 11-12 copian el ritmo de 9-10
+    if(rnd()<0.5){
+      for(let j=0;j<2;j++){
+        L.bars[10+j].notes=L.bars[8+j].notes.map(n=>Object.assign({},n));
+      }
+    }
+    // --- armonía ---
+    mePlanHarmony(L,rnd);
+    L._endTok=[ L._cadA==='semi'?'5':'1', L._endB, '1' ];
+    // --- ventana melódica ---
+    L._lo=L.key.tonicMidi-5; L._hi=L.key.tonicMidi+16;
+    // --- melodía por frases (a → b → a' con arranque copiado) ---
+    let good=true;
+    if(!meComposePhrase(L,0,rnd,{})) good=false;
+    const endA=L._endMidi;
+    if(good && !meComposePhrase(L,1,rnd,{prevEnd:endA})) good=false;
+    if(good){
+      // a': copiar compases 1-2 de a (ritmo+melodía) y componer el resto
+      for(let j=0;j<2;j++){
+        L.bars[16+j].notes=L.bars[j].notes.map(n=>Object.assign({},n));
+        L.bars[16+j].mirror=false; L.bars[16+j].gmirror=false;
+      }
+      if(!meComposeTail(L,rnd)) good=false;
+    }
+    if(good){
+      meSpellChromatics(L);
+      // --- matices y tempo ---
+      L.dynamics=meW(ME.DYN_SCHEMES,rnd).slice();
+      const tr=ME.TEMPO[L.ts]||[45,58];
+      L.tempo=tr[0]+Math.floor(rnd()*(tr[1]-tr[0]+1));
+      L.bars.forEach(b=>{ b.mirror=false; b.gmirror=false; });
+      if(meValidate(L)) return L;                      // cumple todos los validadores
+      const sc=meScore(L);
+      if(sc<bestSc){ bestSc=sc; bestL=L; }             // si no, recordar la mejor candidata
+    }
+  }
+  if(bestL) return bestL;                              // mejor candidata (lección completa igualmente)
+  // último recurso: lección con el generador básico (todo editable a mano)
+  return generateLesson(seed);
+}
+/* a' se compone como frase entera PERO respetando los 2 compases copiados:
+   generamos la frase con los slots de los compases 18-23 partiendo de la última nota copiada */
+function meComposeTail(L,rnd){
+  const effP=resolvedHarmonyByPulse(L);
+  // última nota de los compases copiados
+  let prevEnd=L.key.tonicMidi;
+  for(let j=1;j>=0;j--){ const ns=L.bars[16+j].notes.filter(n=>!n.rest); if(ns.length){ prevEnd=ns[ns.length-1].midi; break; } }
+  // frase "sintética": tratamos 18-23 como una frase corta con cadencia final auténtica
+  const den=parseInt(L.ts.split('/')[1],10); const P=(den===8)?1.5:1.0;
+  const slots=[];
+  for(let j=2;j<8;j++){
+    const bar=L.bars[16+j]; let acc=0;
+    bar.notes.forEach((n,idx)=>{
+      if(!n.rest) slots.push({bar:16+j,idx,on:Math.abs(acc%P)<1e-6,pulse:Math.min(Math.floor(acc/P),L.pulses-1)});
+      acc+=durPulsosDe(n,den)*((den===8)?1.5:1);
+    });
+  }
+  if(!slots.length) return true;
+  const t=L.key.tonicMidi;
+  let cadMidi=t; { let best=null,bd=99; for(let m=L._lo;m<=L._hi;m++){ if(((m%12)+12)%12===((t%12)+12)%12){ const d=Math.abs(m-prevEnd); if(d<bd){bd=d;best=m;} } } cadMidi=best??t; }
+  for(let attempt=0;attempt<80;attempt++){
+    let prev=prevEnd, prevNC=false, dirRun=0, fail=false;
+    const out=new Array(slots.length);
+    for(let i=0;i<slots.length;i++){
+      const s=slots[i];
+      const h=effP[s.bar+':'+s.pulse]||{g:0,seventh:false,qual:null};
+      const pcs=mePcsOf(L,h);
+      let choice=null;
+      if(i===slots.length-1){
+        if(Math.abs(cadMidi-prev)<=4 || (Math.abs(cadMidi-prev)<=7 && pcs.includes(((prev%12)+12)%12))) choice=cadMidi;
+        else { fail=true; break; }
+      } else if(i===slots.length-2){
+        const good=[cadMidi+1,cadMidi+2,cadMidi-1].filter(m=>meInWin(L,m)&&Math.abs(m-prev)<=5&&(pcs.includes(((m%12)+12)%12)||Math.abs(m-prev)<=2));
+        if(good.length) choice=good[Math.floor(rnd()*good.length)];
+      }
+      if(choice==null){
+        let cands=[];
+        if(prevNC) cands=meStepCands(L,h,prev).map(m=>({m,w:pcs.includes(((m%12)+12)%12)?6:2}));
+        else if(s.on){
+          meCands(L,pcs,prev,7).forEach(m=>{ const d=Math.abs(m-prev);
+            let w=d===0?0.6:d<=2?7.5:d<=4?2.6:d<=7?0.9:0;
+            if(dirRun>=3&&Math.sign(m-prev)===Math.sign(dirRun)) w*=0.3;
+            if(w>0) cands.push({m,w}); });
+          meStepCands(L,h,prev).forEach(m=>{ if(!pcs.includes(((m%12)+12)%12)) cands.push({m,w:0.6}); });
+        } else {
+          meStepCands(L,h,prev).forEach(m=>cands.push({m,w:pcs.includes(((m%12)+12)%12)?5.5:3.0}));
+          meCands(L,pcs,prev,5).forEach(m=>{ const d=Math.abs(m-prev); let w=d<=2?0:d<=4?1.3:0.6; if(w>0) cands.push({m,w}); });
+        }
+        cands=cands.filter(c=>meInWin(L,c.m));
+        if(!cands.length){ fail=true; break; }
+        let tot=0; cands.forEach(c=>tot+=c.w); let r=rnd()*tot;
+        for(const c of cands){ r-=c.w; if(r<=0){ choice=c.m; break; } }
+        if(choice==null) choice=cands[cands.length-1].m;
+      }
+      const iv=choice-prev;
+      if(Math.abs(iv)>2){
+        if(prevNC){ fail=true; break; }
+        if(Math.abs(iv)>7 && !(Math.abs(iv)===9||Math.abs(iv)===12)){ fail=true; break; }
+        if(Math.abs(iv)===6||Math.abs(iv)===10||Math.abs(iv)===11){ fail=true; break; }
+      }
+      dirRun=(Math.sign(iv)===Math.sign(dirRun)&&iv!==0)?dirRun+Math.sign(iv):Math.sign(iv);
+      prevNC=!pcs.includes(((choice%12)+12)%12);
+      out[i]=choice; prev=choice;
+    }
+    if(!fail){
+      let z=0;
+      for(let j=2;j<8;j++){
+        L.bars[16+j].notes.forEach(n=>{ if(!n.rest){ n.midi=out[z++]; delete n._enh; } });
+        L.bars[16+j].mirror=false; L.bars[16+j].gmirror=false;
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 /* ---------- Resolver armonía con cascada ----------
@@ -1371,6 +1885,7 @@ function openVariantMenu(anchor, lesson, bar, barIdx, pulseIdx){
   menu.appendChild(inh);
 }
 
+try{ window.ENTON={ genLessonFull, generateLesson, get lesson(){return LESSON;}, set lesson(v){LESSON=v;}, chordPitchClasses, resolvedHarmonyByPulse, romanLabel, KEYS }; }catch(e){}
 /* ---------- Rueda de matiz tipo iOS (f / mf / - / mp / p) ---------- */
 function buildDynWheel(phraseIdx){
   const ORDER=['f','mf','-','mp','p'];
@@ -2673,7 +3188,7 @@ document.getElementById('cfgBtn').onclick=()=>{
 document.getElementById('genBtn').innerHTML=DICE_SVG;
 document.getElementById('genBtn').onclick=()=>{
   const seed=(Date.now() ^ Math.floor(Math.random()*1e9))>>>0;
-  LESSON=generateLesson(seed);
+  LESSON=genLessonFull(seed);   // motor completo: ritmo + melodía + armonía + matices
   renderAll();
 };
 document.querySelectorAll('#levels button').forEach(btn=>{
