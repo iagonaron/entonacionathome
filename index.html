@@ -296,6 +296,7 @@ if(window.Sentry && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
   .tuner-help{font-size:12.5px;color:#55617a;line-height:1.5;margin:0 0 16px}
   .tuner-close{position:absolute;top:12px;right:14px;background:transparent;border:none;font-size:18px;cursor:pointer;color:#90a}
   .tuner-close{color:#8a93a6}
+  .tuner-close{font-size:13px;font-weight:700;padding:6px 14px;border:1px solid #8a93a6;border-radius:8px}
   .tuner-note{font-size:40px;font-weight:800;line-height:1.1;margin:6px 0;color:#2a4ba8;min-height:48px}
   .tuner-bar{position:relative;height:14px;background:linear-gradient(90deg,#f0c0c0,#dfeede 50%,#f0c0c0);border-radius:999px;margin:14px 0 6px;overflow:hidden}
   .tuner-center{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#16a34a;transform:translateX(-1px)}
@@ -524,7 +525,7 @@ if(window.Sentry && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
   <!-- ===================== AFINADOR DE DIAGNÓSTICO ===================== -->
   <div id="tunerOverlay" class="tuner-overlay">
     <div class="tuner-card">
-      <button class="tuner-close" id="tunerClose">✕</button>
+      <button class="tuner-close" id="tunerClose">Entendido</button>
       <h3>Afinador · diagnóstico de micrófono</h3>
       <p class="tuner-help">Canta una nota sostenida (por ejemplo un <b>Si♭</b>) y mira qué detecta el programa. Si cantas afinado y aquí ves la nota correcta cerca de 0 cents, todo va bien.</p>
       <div class="tuner-readout">
@@ -3220,6 +3221,7 @@ document.querySelectorAll('#levels button').forEach(btn=>{
 /* ---------- Navegación entre vistas + gate de contraseña ---------- */
 const PW_EDITOR='010513';
 function showView(which){
+  try{ if(which!=='practice' && typeof ACT!=='undefined') ACT.flush(); }catch(e){}
   document.getElementById('viewStudent').classList.toggle('active', which==='student');
   document.getElementById('viewEditor').classList.toggle('active', which==='editor');
   document.getElementById('viewPractice').classList.toggle('active', which==='practice');
@@ -3375,6 +3377,7 @@ function getDoneIds(){ try{ return JSON.parse(localStorage.getItem(doneKey())||'
 function markDone(id){ try{ const a=getDoneIds(); if(a.indexOf(id)<0){ a.push(id); localStorage.setItem(doneKey(), JSON.stringify(a)); } }catch(e){} }
 
 async function startStudentSession(level){
+  try{ ACT.flush(); ACT.reset(); }catch(e){}
   const soon=document.querySelector('.lvl-soon');
   if(soon){ soon.textContent='Cargando lección…'; soon.style.color='var(--ink)'; }
   // cargar lecciones de Supabase
@@ -3488,6 +3491,46 @@ function placeDynUnderFirstNote(wrapEl, info, barFrom, dyn){
   wrapEl.appendChild(lab);
 }
 
+/* ---------- QUÉ SUMA v2 · registro del tiempo válido (C4, 13-nov-2026) ----------
+   Reglas de Iago: estudio = tiempo real en la pantalla de estudio (tope 5 min por ejercicio, aunque no toque nada);
+   intentos = tiempo de reproducción de la música (tope 8 min), sin cortesía. Solo suma si completó >=1 intento
+   (un intento cortado por frase cuenta, con lo que sonó). Se manda UNA vez al terminar el ejercicio (cambiar de
+   ejercicio, salir o cerrar la pestaña). Supabase aplica mínimo 3 min, topes y el visto bueno. */
+const ACT = {
+  est:0, intentos:0, n:0, enviado:false,
+  EST_MAX:300, INT_MAX:480,
+  reset(){ this.est=0; this.intentos=0; this.n=0; this.enviado=false; },
+  tickEstudio(){ if(this.est<this.EST_MAX) this.est++; },
+  addIntento(seg){ this.n++; this.intentos=Math.min(this.INT_MAX, this.intentos+Math.max(0,Math.round(seg))); },
+  cuenta(){
+    try{ var m=/(?:^|;\s*)lm_cta_ge=([0-9a-fA-F-]{36})/.exec(document.cookie||''); if(m) return m[1]; }catch(e){}
+    try{ var ses=JSON.parse(localStorage.getItem('lmeav_session')||'null'); if(ses&&ses.id&&ses.estado==='validado') return ses.id; }catch(e){}
+    return null;
+  },
+  post(body){
+    return fetch('https://woiptkyrxkbpnvioypit.supabase.co/rest/v1/rpc/suite_actividad_terminada',{method:'POST',keepalive:true,
+      headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvaXB0a3lyeGticG52aW95cGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NzI2ODYsImV4cCI6MjA5MjA0ODY4Nn0.B2nKgj5rD0rkdLeMIrd9KgD8lUPWsBT4Y7aCtmnvbjA','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndvaXB0a3lyeGticG52aW95cGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NzI2ODYsImV4cCI6MjA5MjA0ODY4Nn0.B2nKgj5rD0rkdLeMIrd9KgD8lUPWsBT4Y7aCtmnvbjA'},body:JSON.stringify(body)})
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); });
+  },
+  pendientes(){ try{ return JSON.parse(localStorage.getItem('lm_act_pend')||'[]'); }catch(e){ return []; } },
+  guardarPend(a){ try{ localStorage.setItem('lm_act_pend',JSON.stringify(a.slice(-10))); }catch(e){} },
+  reintentar(){
+    var a=this.pendientes(); if(!a.length) return; this.guardarPend([]); var self=this;
+    a.forEach(function(b){ self.post(b).catch(function(){ self.guardarPend(self.pendientes().concat([b])); }); });
+  },
+  flush(){
+    if(this.enviado || this.n<1) return;
+    var total=this.est+this.intentos; var cta=this.cuenta();
+    if(!cta || total<180) return;          // menos de 3 min no cuenta
+    this.enviado=true;
+    var body={p_cuenta_id:cta,p_app:'entonacion-ge',p_segundos:total,
+      p_detalle:{max:this.EST_MAX+this.INT_MAX,maximo:(this.est>=this.EST_MAX&&this.intentos>=this.INT_MAX),modo:'estudio','f:estudio':this.est,'f:intentos':this.intentos}};
+    var self=this; this.post(body).catch(function(){ self.guardarPend(self.pendientes().concat([body])); });
+  }
+};
+addEventListener('pagehide',function(){ try{ ACT.flush(); }catch(e){} });
+setTimeout(function(){ try{ ACT.reintentar(); }catch(e){} },6000);
+
 /* ---------- FASE ESTUDIO ---------- */
 // extra=false: primera entrada (5 min, acompañamiento a los 2 min)
 // extra=true: segunda entrada (3 min, acompañamiento desde el principio)
@@ -3513,7 +3556,7 @@ function startStudyPhase(extra){
   if(extra){ const sh=document.getElementById('speedHint'); if(sh) sh.classList.add('show'); }
   if(STU.studyTimer) clearInterval(STU.studyTimer);
   STU.studyTimer=setInterval(()=>{
-    STU.studyLeft--;
+    STU.studyLeft--; try{ ACT.tickEstudio(); }catch(e){}
     updateStudyTimer();
     if(!STU._accompUnlocked && STU.studyLeft<=120){
       STU._accompUnlocked=true;
@@ -3951,6 +3994,7 @@ function resolveNoteResults(){
 }
 
 function finishAttempt(cutByPhrase){
+  try{ ACT.addIntento(ATT._t0Perf? Math.min((performance.now()-ATT._t0Perf)/1000, 600):0); }catch(e){}
   ATT.running=false;
   if(ATT._analyzeTimer){ clearInterval(ATT._analyzeTimer); ATT._analyzeTimer=null; }
   (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
@@ -4227,7 +4271,7 @@ document.getElementById('atHelpBtn').onclick=()=>{
   const info=document.getElementById('atHelpInfo');
   const open=info.style.display!=='none';
   info.style.display=open?'none':'';
-  document.getElementById('atHelpBtn').textContent=open?'ⓘ ¿Cómo funciona?':'✕ Cerrar';
+  document.getElementById('atHelpBtn').textContent=open?'ⓘ ¿Cómo funciona?':'Entendido';
 };
 document.getElementById('stTonic').onclick=playTonic;
 document.getElementById('stScale').onclick=playScale;
