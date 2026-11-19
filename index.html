@@ -3802,7 +3802,7 @@ async function startAttempt(){
   // primera nota de la melodía sonando durante el compás de claqueta (referencia)
   ensureSoundfont().then(()=>{ if(EDIT.sf && ATT.notes[0]){ try{ EDIT.sf.play(ATT.notes[0].midi, t0, {duration: Math.min(1.2,nPulses*pulseSec)}); }catch(e){} } });
   // mostrar números de claqueta
-  for(let p=0;p<nPulses;p++){ const id=setTimeout(()=>showClack(p+1), (t0-ctx.currentTime+p*pulseSec)*1000); ATT.timers.push(id); }
+  for(let p=0;p<nPulses;p++){ const id=setTimeout(()=>showClack(nPulses-p), (t0-ctx.currentTime+p*pulseSec)*1000); ATT.timers.push(id); } /* (19-nov-2026, Iago) cuenta atrás: «2, 1» y empieza */
   const musicStart = t0 + nPulses*pulseSec;
   const startId=setTimeout(()=>{ hideClack(); runAttemptMusic(musicStart); }, (musicStart-ctx.currentTime)*1000);
   ATT.timers.push(startId);
