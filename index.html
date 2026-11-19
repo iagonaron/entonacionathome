@@ -3651,7 +3651,9 @@ function goToAttempt(){
 /* =========================================================================
    MOTOR DE DETECCIÓN DE TONO (criterio y colores reutilizados de la app de Iago)
    ========================================================================= */
-const PCFG = { rmsMin:0.024, micGain:8.0, centsPerfect:50, centsNear:100, centsPerfectLow:50, centsNearLow:100, fftSize:2048 };
+// (19-nov-2026, Iago: «cantando a propósito mal la parte del medio me dio un 77 %… volverlo un 10 % más duro, un poco más
+//  sensible a la hora de poner amarillo») verde: de 50 a 40 cents (y 2.ª regla en resolveNoteResults: que se SOSTENGA)
+const PCFG = { rmsMin:0.024, micGain:8.0, centsPerfect:40, centsNear:100, centsPerfectLow:40, centsNearLow:100, fftSize:2048, verdeSostenido:0.25 };
 let MIC = { ctx:null, analyser:null, stream:null, buf:null, gainNode:null, rawAnalyser:null, rawBuf:null, autoGain:8.0, ready:false };
 
 async function initMic(){
@@ -3987,7 +3989,10 @@ function resolveNoteResults(){
     const dir=acc.bestDir||'alta';
     const perfectTh = (dir==='baja') ? PCFG.centsPerfectLow : PCFG.centsPerfect;
     const nearTh    = (dir==='baja') ? PCFG.centsNearLow    : PCFG.centsNear;
-    if(acc.bestCents<=perfectTh) n.result='green';
+    // (19-nov-2026) ya no basta UN instante afinado (al deslizarse de una nota mala a otra se cruzaba la buena y salía verde):
+    // verde = afinada (≤40 c) en al menos el 25 % de lo cantado en esa nota, y nunca menos de 2 lecturas (~0,12 s).
+    const sostenida = (acc.green||0) >= Math.max(2, Math.ceil(acc.voiced*PCFG.verdeSostenido));
+    if(acc.bestCents<=perfectTh && sostenida) n.result='green';
     else if(acc.bestCents<=nearTh) n.result='amber';
     else n.result='red';
   });
