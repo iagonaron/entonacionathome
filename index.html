@@ -3627,9 +3627,10 @@ function buildAttemptTimeline(){
   return notes;
 }
 
-function runAttemptMusic(musicStart){
+function runAttemptMusic(musicStart, desde){   // (24-nov-2026, Iago, 00k) desde = pulso desde el que se retoma tras un cambio de velocidad
+  const G=desde||0, re=G>0;
   const L=STU.lesson; const ts=L.ts; const den=parseInt(ts.split('/')[1],10);
-  const nPulses=L.pulses; const pulseSec=60/STU.tempo; const beatMs=pulseSec*1000;
+  const nPulses=L.pulses; const pulseSec=60/STU.tempo; const beatMs=pulseSec*1000; const tDesde=G*pulseSec-1e-6;
   const ctx=ACMP.ctx;
   const padVoicing=buildPadVoicing(L,0);
   // programar acompañamiento (pad + percusión)
@@ -3640,12 +3641,13 @@ function runAttemptMusic(musicStart){
     const phraseIdx=Math.floor(b/8); const isB=(phraseIdx===1);
     const dyn=(L.dynamics&&L.dynamics[phraseIdx])||null; const prof=dynProfile(dyn);
     const barStart=cursor;
-    for(let p=0;p<nPulses;p++){ percPattern(ts,p,nPulses,ctx,ACMP.master,musicStart+barStart+p*pulseSec,beatMs,isB,0.5*prof.vol,prof.dens); }
-    (padVoicing[b]||[]).forEach(seg=>{ padPlayChord(ctx,ACMP.master,seg.voices,musicStart+barStart+seg.pPad*pulseSec,seg.span*pulseSec*0.98,0.035*prof.vol); });
+    for(let p=0;p<nPulses;p++){ if(b*nPulses+p<G) continue; percPattern(ts,p,nPulses,ctx,ACMP.master,musicStart+barStart+p*pulseSec,beatMs,isB,0.5*prof.vol,prof.dens); }
+    (padVoicing[b]||[]).forEach(seg=>{ const s0=b*nPulses+seg.pPad, s1=s0+seg.span; if(s1<=G) return; const st=Math.max(s0,G);
+      padPlayChord(ctx,ACMP.master,seg.voices,musicStart+st*pulseSec,(s1-st)*pulseSec*0.98,0.035*prof.vol); });
     cursor+=nPulses*pulseSec;
   }
   // marcar nota activa en azul (visual) por tiempos
-  ATT.notes.forEach(n=>{
+  ATT.notes.forEach(n=>{ if(n.t0<tDesde) return;
     const onId=setTimeout(()=>{ if(!ATT.running) return; ATT._heads.forEach(h=>h.classList.remove('singing-now','help-pulse')); const h=ATT._heads[n.headIdx]; if(h) h.classList.add('singing-now'); }, (musicStart-ctx.currentTime + n.t0)*1000);
     ATT.timers.push(onId);
   });
@@ -3653,9 +3655,9 @@ function runAttemptMusic(musicStart){
   // niveles: 'none' | 'sysStart' (1ª del sistema) | 'every2' (1ª de cada 2 compases) | 'every1' (1ª de cada compás)
   // el sistema 0 empieza con 'sysStart'; cada sistema fija el nivel del siguiente según su % de aciertos
   const SYS_STARTS=[0,4,8,12,16,20];
-  ATT.sysHelpLevel = ['sysStart',null,null,null,null,null]; // por sistema (índice 0..5)
+  if(!re){ ATT.sysHelpLevel = ['sysStart',null,null,null,null,null]; // por sistema (índice 0..5)
   ATT.helpGiven = 0;     // nº de notas de ayuda que han sonado (para valoración final)
-  ATT.sysChecked = {};   // sistemas ya evaluados para calibrar el siguiente
+  ATT.sysChecked = {}; }  // sistemas ya evaluados para calibrar el siguiente
   // 1ª nota (no silencio) de cada compás -> headIdx, para localizar apoyos
   ATT._firstHeadOfBar={};
   for(let b=0;b<24;b++){
@@ -3665,7 +3667,7 @@ function runAttemptMusic(musicStart){
   ATT._sysStartSec=barStartSec; // inicio en seg de cada compás (para temporizar el aura)
   for(let b=0;b<24;b++){
     const n=ATT.notes.find(x=> x.t0>=barStartSec[b]-0.001 && x.t0<barStartSec[b]+nPulses*pulseSec);
-    if(!n) continue;
+    if(!n || n.t0<tDesde) continue;
     const sysIdx=Math.floor(b/4);
     const posInSys=b%4; // 0..3 (0 = inicio de sistema)
     const whenMs=(musicStart-ctx.currentTime + n.t0)*1000;
@@ -3688,15 +3690,41 @@ function runAttemptMusic(musicStart){
   // (20-nov-2026, plan común §4) en la realización final NO se premarca ninguna nota en azul (antes: el aura anticipada, paintSystemAura)
   // arrancar el bucle de análisis de micrófono
   ATT._t0Perf = performance.now() + (musicStart-ctx.currentTime)*1000;
-  ATT._sampleAcc = {};
+  if(!re){ ATT._sampleAcc = {};
   ATT._cutPhrase = null;
-  ATT._phraseChecked = {};
+  ATT._phraseChecked = {}; }
+  if(ATT._analyzeTimer) clearInterval(ATT._analyzeTimer);
   ATT._analyzeTimer = setInterval(analyzeAttemptFrame, 60);
   const totalSec=cursor;
   const endId=setTimeout(()=>{ if(ATT.running) finishAttempt(false); }, (musicStart-ctx.currentTime + totalSec + 0.3)*1000);
   ATT.timers.push(endId);
 }
 
+/* (24-nov-2026, Iago, 00k) «si decido pulsar más lento… quiero que me lo aplique ya desde el siguiente pulso»: en plena
+   realización final (o en su cuenta atrás) el cambio de velocidad entra en el siguiente pulso, sin parar ni volver a empezar.
+   Lo que suena termina justo en ese pulso; la música, la nota iluminada, la ayuda del piano y la escucha del micrófono siguen
+   al tempo nuevo (las posiciones en pulsos no cambian: solo se reescala el tiempo desde ese pulso). Lo ya cantado se conserva. */
+function epCortaNodos(t){ (ACMP._nodes||[]).forEach(n=>{ try{ if(n.stop) n.stop(t); }catch(e){} }); ACMP._nodes=[]; }
+function epTempoCaliente(){
+  if(!ATT.running || EP.phase!=='final' || !ACMP.ctx || !ATT._pulseSec) return;
+  const ctx=ACMP.ctx, now=ctx.currentTime, M=0.07, oPs=ATT._pulseSec, nPs=60/STU.tempo; if(Math.abs(nPs-oPs)<1e-6) return;
+  const L=STU.lesson, nP=L.pulses, ms=ATT._musicStart;
+  const perfDe=t=>performance.now()+(t-ctx.currentTime)*1000;
+  if(now < ms-M){   // aún en la cuenta atrás: siguen los golpes que faltan, al tempo nuevo
+    let i=Math.ceil((now+M-ATT._clackT0)/oPs-1e-6); if(i<0) i=0;
+    if(i<nP){ const tI=ATT._clackT0+i*oPs; epCortaNodos(tI); (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
+      for(let p=i;p<nP;p++){ const tp=tI+(p-i)*nPs; percClave(ctx,ACMP.master,tp,0.8); const id=setTimeout(()=>{ if(ATT.running) showClack(nP-p); }, Math.max(0,(tp-ctx.currentTime)*1000)); ATT.timers.push(id); }
+      const mS=tI+(nP-i)*nPs; ATT._clackT0=tI-i*nPs; ATT._musicStart=mS; ATT._pulseSec=nPs;
+      ATT._t0Perf=(ATT._t0Perf||perfDe(ms))+(mS-ms)*1000; ATT._iniPerf=ATT._t0Perf; ATT.notes=buildAttemptTimeline();   // mismo reloj que al empezar
+      const startId=setTimeout(()=>{ hideClack(); if(ATT.running) runAttemptMusic(mS); }, Math.max(0,(mS-ctx.currentTime)*1000)); ATT.timers.push(startId);
+      return; }
+  }
+  const k=Math.max(0,Math.ceil((now+M-ms)/oPs-1e-9)), total=24*nP; if(k>=total) return;   // el siguiente pulso que aún no ha sonado
+  const tk=ms+k*oPs; epCortaNodos(tk); (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
+  const mS=tk-k*nPs; ATT._musicStart=mS; ATT._pulseSec=nPs; ATT.notes=buildAttemptTimeline();
+  const p0=ATT._t0Perf; runAttemptMusic(mS, k); if(p0) ATT._t0Perf=p0+(mS-ms)*1000;   // mismo reloj que al empezar (sin volver a medir)
+  ATT.timers.push(setTimeout(()=>hideClack(), Math.max(0,(tk-ctx.currentTime)*1000)));   // si aún sonaba el último «1» de la cuenta atrás
+}
 // pinta el aura anticipada en las notas de apoyo del sistema s (limpia las de otros sistemas)
 function paintSystemAura(s){
   // quitar auras anteriores
@@ -3809,7 +3837,7 @@ function resolveNoteResults(){
 
 function finishAttempt(cutByPhrase){
   epPlayUI(false);
-  try{ ACT.addIntento(ATT._t0Perf? Math.min((performance.now()-ATT._t0Perf)/1000, 600):0); }catch(e){}
+  try{ const _i=ATT._iniPerf||ATT._t0Perf; ACT.addIntento(_i? Math.min((performance.now()-_i)/1000, 600):0); }catch(e){}
   ATT.running=false;
   if(ATT._analyzeTimer){ clearInterval(ATT._analyzeTimer); ATT._analyzeTimer=null; }
   (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
@@ -4046,7 +4074,7 @@ function epControlsUI(){
   const tr=vb.querySelector('.veltrack');
   for(let lvl=-2;lvl<=2;lvl++){ const d=document.createElement('button'); d.type='button'; d.className='veldot'+(lvl===EP.vel?' on':'');
     d.title=lvl===0?'Velocidad estándar':(lvl<0?'Más lento que el estándar':'Más rápido que el estándar');
-    d.onclick=()=>{ EP.vel=lvl; STU.tempo=epTempo(); tr.querySelectorAll('.veldot').forEach(x=>x.classList.toggle('on',x===d)); try{ d.blur(); }catch(e){} };
+    d.onclick=()=>{ EP.vel=lvl; STU.tempo=epTempo(); tr.querySelectorAll('.veldot').forEach(x=>x.classList.toggle('on',x===d)); try{ d.blur(); }catch(e){} try{ epTempoCaliente(); }catch(e){ console.warn('[tempo]',e); } };
     tr.appendChild(d); }
   vg.appendChild(vb); bar.appendChild(vg);
 }
@@ -4063,7 +4091,7 @@ function epPideMic(){ epMicEstado('pide'); initMic().then(()=>epMicEstado('ok'))
 
 /* ---------- carteles (tapan la pantalla; el tiempo corre al pulsar el botón) ---------- */
 function epVelAviso(extra){ const d=document.createElement('div'); d.className='rp-velaviso ep-fila'; let dots=''; for(let i=-2;i<=2;i++) dots+='<i'+(i===EP.vel?' class="on"':'')+'></i>';
-  d.innerHTML='<span class="ep-ver"><span class="rp-va-bar"><span class="rp-va-e">🐢</span>'+dots+'<span class="rp-va-e">🐇</span></span></span><span class="rp-va-t">Abajo, en la barra de <b>Velocidad</b>, puedes ir más lento o más rápido. La que elijas se mantiene hasta el final, salvo que la cambies.'+(extra?' '+extra:'')+'</span>';
+  d.innerHTML='<span class="ep-ver"><span class="rp-va-bar"><span class="rp-va-e">🐢</span>'+dots+'<span class="rp-va-e">🐇</span></span></span><span class="rp-va-t">Abajo, en la barra de <b>Velocidad</b>, puedes ir más lento o más rápido. La que elijas se mantiene hasta el final, salvo que la cambies. Si la cambias mientras suena, se aplica desde el <b>siguiente pulso</b>, sin volver a empezar.'+(extra?' '+extra:'')+'</span>';
   return d; }
 /* (20-nov-2026, Iago) «que sean más visuales: que aparezcan como imágenes reales los botones Tónica, Escala, Arpegio o
    Pistas, cómo se los van a encontrar después». Cada fila: a la izquierda, el botón tal cual (las mismas clases que el de
@@ -4107,7 +4135,7 @@ function epCartel(kind, motivo){
     d='Canta la lección con el <b>acompañamiento</b>: el <b>micrófono</b> te escucha. Canta en la <b>octava</b> que te sea cómoda.';
     filas=[
       epFila('<span class="ep-play"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 2.2v11.6c0 .6.6.9 1.1.6l9-5.8a.7.7 0 0 0 0-1.2l-9-5.8C4.6 1.3 4 1.6 4 2.2Z" fill="currentColor"/></svg></span>',
-        'Pulsa el <b>botón azul</b> (o la <b>barra espaciadora</b>) para empezar: cuenta atrás y solo la <b>tónica</b>. Si se pone <b>rojo</b>, al pulsarlo paras.'),
+        'Al pulsar <b>Activar el micrófono y empezar</b>, en cuanto el micrófono esté listo empieza <b>sola</b> la cuenta atrás, con solo la <b>tónica</b>. Para parar, pulsa el botón de arriba (o la <b>barra espaciadora</b>).'),
       epFila('<span class="rp-mic ok">'+EP_MIC_SVG+'<span class="rp-mic-t">Micrófono listo</span><span class="rp-mic-n"><i style="width:62%"></i></span></span>',
         'Abajo ves si el <b>micrófono</b> te oye: la barrita se mueve cuando cantas.'),
       epFila(epPapel([{c:NE},{c:'#2355ce'},{c:NE},{c:NE}]),
@@ -4119,7 +4147,7 @@ function epCartel(kind, motivo){
   card.innerHTML=(k?'<p class="pb-k">'+k+'</p>':'')+'<p class="pb-t">'+t+'</p><p class="pb-d">'+d+'</p><div class="ep-cv">'+filas.join('')+'</div>';
   card.querySelector('.ep-cv').appendChild(epVelAviso(kind==='study'?'Es la velocidad a la que cantarás en la realización final.':''));
   const okw=document.createElement('div'); okw.className='pb-ok'; const go=document.createElement('button'); go.type='button'; go.className='pb-go';
-  if(kind==='final'){ go.innerHTML=EP_MIC_SVG+' Activar el micrófono y empezar'; go.onclick=()=>{ scrim.remove(); EP.cartel=false; epPideMic(); }; }
+  if(kind==='final'){ go.innerHTML=EP_MIC_SVG+' Activar el micrófono y empezar'; go.onclick=()=>{ scrim.remove(); EP.cartel=false; try{ ensureAudioEngine(); if(ACMP.ctx && ACMP.ctx.state==='suspended') ACMP.ctx.resume(); }catch(e){} startAttempt(); }; /* (24-nov-2026, Iago, 00k) arranca sola en cuanto el micrófono está listo */ }
   else { go.textContent='Entendido'; go.onclick=()=>{ scrim.remove(); EP.cartel=false; epRelojUI(); }; }
   okw.appendChild(go); card.appendChild(okw); scrim.appendChild(card); host.appendChild(scrim);
   EP.cartel=true;
@@ -4189,7 +4217,7 @@ function enterFinal(motivo){
 function epLimpiaColores(){ (STU._heads||[]).forEach(h=>h.classList.remove('res-green','res-amber','res-red','singing-now','help-aura','help-pulse','now-singing')); }
 function epCortaIntento(){
   if(!ATT.running) return;
-  try{ ACT.addIntento(ATT._t0Perf? Math.max(0,Math.min((performance.now()-ATT._t0Perf)/1000, 600)):0); }catch(e){}
+  try{ const _i=ATT._iniPerf||ATT._t0Perf; ACT.addIntento(_i? Math.max(0,Math.min((performance.now()-_i)/1000, 600)):0); }catch(e){}
   ATT.running=false;
   if(ATT._analyzeTimer){ clearInterval(ATT._analyzeTimer); ATT._analyzeTimer=null; }
   (ATT.timers||[]).forEach(id=>clearTimeout(id)); ATT.timers=[];
@@ -4216,7 +4244,8 @@ async function startAttempt(){
   ensureSoundfont().then(()=>{ if(EDIT.sf && ATT.running){ try{ EDIT.sf.play(L.key.tonicMidi, t0, {duration: Math.min(1.4,nPulses*pulseSec)}); }catch(e){} } });
   for(let p=0;p<nPulses;p++){ const id=setTimeout(()=>{ if(ATT.running) showClack(nPulses-p); }, (t0-ctx.currentTime+p*pulseSec)*1000); ATT.timers.push(id); }
   const musicStart = t0 + nPulses*pulseSec;
-  ATT._t0Perf = performance.now() + (musicStart-ctx.currentTime)*1000;
+  ATT._t0Perf = performance.now() + (musicStart-ctx.currentTime)*1000; ATT._iniPerf=ATT._t0Perf;
+  ATT._clackT0=t0; ATT._musicStart=musicStart; ATT._pulseSec=pulseSec;   // (24-nov-2026, Iago, 00k)
   const startId=setTimeout(()=>{ hideClack(); if(ATT.running) runAttemptMusic(musicStart); }, (musicStart-ctx.currentTime)*1000);
   ATT.timers.push(startId);
 }
